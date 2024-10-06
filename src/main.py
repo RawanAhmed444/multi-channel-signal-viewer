@@ -55,3 +55,10 @@ if __name__ == "__main__":
     mainWindow = MainWindow()
     mainWindow.show()
     sys.exit(app.exec_())
+from logic.signal_processing import load_signal_from_file
+
+# Example usage
+filename = "src\data\signals\EEG_Normal.csv"
+signal_data = load_signal_from_file(filename)
+print(signal_data)
+
