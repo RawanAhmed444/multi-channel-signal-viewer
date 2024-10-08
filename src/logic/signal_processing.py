@@ -9,3 +9,5 @@ def load_signal_from_file(filename):
         for row in csvreader:
             signal_data.append([row[0], row[1]])  # Extract only the first two columns
     return np.array(signal_data)
+
+
