@@ -13,7 +13,6 @@ import pyqtgraph as pg
 from signal_processing import load_signal_from_file
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 
 class Ui_MainWindow(object):
     
