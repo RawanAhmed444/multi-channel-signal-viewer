@@ -1,6 +1,8 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import numpy as np
+from pyqtgraph import PlotDataItem
+
 
 class CustomMessageBox(QtWidgets.QMessageBox):
     def __init__(self, parent=None):
@@ -127,6 +129,7 @@ class RightClickPopup(QtWidgets.QDialog):
 
 
 class Ui_MainWindow(object):
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1920, 1080)
@@ -160,7 +163,7 @@ class Ui_MainWindow(object):
         self.Move1 = self.createButton("Move", 370, 290)     # Left Move button
         self.ZoomIn1 = self.createButton("+", 500, 290, size=(31, 31))  # Left Zoom In button
         self.ZoomOut1 = self.createButton("-", 560, 290, size=(31, 31)) # Left Zoom Out button
-        self.SS1 = self.createButton("SS", 620, 290, size=(31, 31))     # Left SS button
+        self.Snapshot1 = self.createButton("SS", 620, 290, size=(31, 31))     # Left SS button
 
         self.Signal2 = self.createButton("Signal", 15, 470, self.signalButtonClicked)  # Left Signal button for second plot
         self.Play2 = self.createButton("Play", 110, 600)      # Left Play button for second plot
@@ -168,7 +171,7 @@ class Ui_MainWindow(object):
         self.Move2 = self.createButton("Move", 370, 600)     # Left Move button for second plot
         self.ZoomIn2 = self.createButton("+", 500, 600, size=(31, 31))  # Left Zoom In button for second plot
         self.ZoomOut2 = self.createButton("-", 560, 600, size=(31, 31)) # Left Zoom Out button
-        self.SS2 = self.createButton("SS", 620, 600, size=(31, 31))     # Left SS button for second plot
+        self.Snapshot2 = self.createButton("SS", 620, 600, size=(31, 31))     # Left SS button for second plot
 
         # Right side buttons (renamed mirrored buttons)
         self.Signal3 = self.createButton("Signal", 695, 140, self.signalButtonClicked)   # Right Signal button
@@ -177,7 +180,7 @@ class Ui_MainWindow(object):
         self.Move3 = self.createButton("Move", 1050, 290)     # Right Move button
         self.ZoomIn3 = self.createButton("+", 1180, 290, size=(31, 31))  # Right Zoom In button
         self.ZoomOut3 = self.createButton("-", 1240, 290, size=(31, 31)) # Right Zoom Out button
-        self.SS3 = self.createButton("SS", 1300, 290, size=(31, 31))     # Right SS button
+        self.Snapshot3 = self.createButton("SS", 1300, 290, size=(31, 31))     # Right SS button
 
         self.Signal4 = self.createButton("Signal", 695, 470, self.signalButtonClicked)  # Right Signal button for second plot
         self.Play4 = self.createButton("Play", 790, 600)      # Right Play button for second plot
@@ -185,7 +188,7 @@ class Ui_MainWindow(object):
         self.Move4 = self.createButton("Move", 1050, 600)     # Right Move button for second plot
         self.ZoomIn4 = self.createButton("+", 1180, 600, size=(31, 31))  # Right Zoom In button for second plot
         self.ZoomOut4 = self.createButton("-", 1240, 600, size=(31, 31)) # Right Zoom Out button
-        self.SS4 = self.createButton("SS", 1300, 600, size=(31, 31))     # Right SS button for second plot
+        self.Snapshot4 = self.createButton("SS", 1300, 600, size=(31, 31))     # Right SS button for second plot
 
         self.line_vertical = QtWidgets.QFrame(self.centralwidget)
         self.line_vertical.setGeometry(QtCore.QRect(680, 0, 2, 1200))  # Vertical line
@@ -234,41 +237,26 @@ class Ui_MainWindow(object):
             "    color: #ffffff;                 /* White text when pressed */\n"
             "}\n"
         )
-    def plotClicked(self, event):
-    # Check if the left mouse button was clicked
-      if event.button() == QtCore.Qt.LeftButton:
-        # Display the statistics popup
-        stats_popup = StatisticsPopup()
-        stats_popup.statsLabel.setText("Mean =") 
-        stats_popup.exec_()      
-      elif event.button() == QtCore.Qt.RightButton:
-        # Display the right-click popup
-        right_click_popup = RightClickPopup()
-        right_click_popup.exec_()
     
     def initPlots(self):
         # Create two plots using PyQtGraph (shifted 50 pixels down)
         self.Plot1 = pg.PlotWidget(self.centralwidget)
         self.Plot1.setGeometry(QtCore.QRect(120, 70, 541, 201))  # Shifted from 20 to 70
         self.Plot1.setObjectName("Plot1")
-        self.Plot1.scene().sigMouseClicked.connect(self.plotClicked)  # Connect mouse click to the plot
 
         # Increase the y-coordinate for the second plot
         self.Plot2 = pg.PlotWidget(self.centralwidget)
         self.Plot2.setGeometry(QtCore.QRect(120, 390, 541, 201))  # Shifted from 340 to 390
         self.Plot2.setObjectName("Plot2")
-        self.Plot2.scene().sigMouseClicked.connect(self.plotClicked)  # Connect mouse click to the plot
 
         # Mirrored plots
         self.Plot3 = pg.PlotWidget(self.centralwidget)
         self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  # Right Plot1
         self.Plot3.setObjectName("Plot3")
-        self.Plot3.scene().sigMouseClicked.connect(self.plotClicked)  # Connect mouse click to the plot
 
         self.Plot4 = pg.PlotWidget(self.centralwidget)
         self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  # Right Plot2
         self.Plot4.setObjectName("Plot4")
-        self.Plot4.scene().sigMouseClicked.connect(self.plotClicked)  # Connect mouse click to the plot
 
         # Example data for plotting
         self.plotData()
@@ -282,8 +270,11 @@ class Ui_MainWindow(object):
         y4 = np.log10(x + 1e-10)  # Adjust to avoid log(0)
 
         # Plot the data
-        self.Plot1.plot(x, y1, pen='r', name='Sin')  # Red line
-        self.Plot2.plot(x, y2, pen='b', name='Cos')  # Blue line
+        signal1 = pg.PlotDataItem(x, y1, pen='r', name='Sin')  # Red line
+        signal2 = pg.PlotDataItem(x, y2, pen='b', name='Cos')  # Blue line
+
+        self.Plot1.addItem(signal1)
+        self.Plot2.addItem(signal2)
         self.Plot3.plot(x, y3, pen='g', name='e^x')  # Green line
         self.Plot4.plot(x, y4, pen='y', name='log(x)')  # Yellow line
 
@@ -299,18 +290,6 @@ class Ui_MainWindow(object):
         buttonReport = msg.addButton("Report", QtWidgets.QMessageBox.ActionRole)
         msg.exec_()
 
-
-
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-
-if __name__ == "__main__":
-    import sys 
-    app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec_())
-
