@@ -129,9 +129,9 @@ class RightClickPopup(QtWidgets.QDialog):
         self.setLayout(layout)
 
         # Add a "Link" button to the layout
-        link_button = QtWidgets.QPushButton("Link")
-        link_button.clicked.connect(self.close)  # Optionally close the popup when clicked
-        layout.addWidget(link_button)
+        # link_button = QtWidgets.QPushButton("Link")
+        # link_button.clicked.connect(self.close)  # Optionally close the popup when clicked
+        # layout.addWidget(link_button)
 
 
 class Ui_MainWindow(object):
@@ -185,6 +185,7 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def initButtons(self):
+
         # Button configurations (shifted down by 50 pixels)
         self.Signal1 = self.createButton("Signal", 15, 140, self.signalButtonClicked)   # Left Signal button
         self.Play1 = self.createButton("Play", 110, 290)      # Left Play button
@@ -193,8 +194,11 @@ class Ui_MainWindow(object):
         self.ZoomIn1 = self.createButton("+", 500, 290, size=(31, 31))  # Left Zoom In button
         self.ZoomOut1 = self.createButton("-", 560, 290, size=(31, 31)) # Left Zoom Out button
         self.SS1 = self.createButton("SS", 620, 290, size=(31, 31))     # Left SS button
+        self.link_button= self.createButton("Link", 1, 1)
         self.ZoomIn1.clicked.connect(self.zoom_in_1)
         self.ZoomOut1.clicked.connect(self.zoom_out_1)
+        self.link_button.clicked.connect(self.link_plots)
+
 
         self.Signal2 = self.createButton("Signal", 15, 470, self.signalButtonClicked)  # Left Signal button for second plot
         self.Play2 = self.createButton("Play", 110, 600)      # Left Play button for second plot
@@ -240,9 +244,26 @@ class Ui_MainWindow(object):
         self.line_horizontal.setFrameShadow(QtWidgets.QFrame.Sunken)
         self.line_horizontal.setStyleSheet("background-color: gray;")  # Same style as the vertical line
 
+    def link_plots(self):
+        global is_linked
+        is_linked = False
+        if is_linked:
+            # Unlink the plots
+            self.Plot2.setXLink(None)
+            self.Plot2.setYLink(None)
+            self.link_button.setText("Link Plots")  # Change button text to "Link Plots"
+            is_linked = False  # Update the state
+        else:
+            # Link the plots and set the same zoom
+            self.Plot2.setXLink(self.Plot1)
+            self.Plot2.setYLink(self.Plot1)  # Uncomment if you want to link y-axis as well
 
-
-
+            # Synchronize zoom levels
+            self.Plot2.getViewBox().setRange(xRange=self.Plot1.getViewBox().viewRange()[0],
+                                        yRange=self.Plot1.getViewBox().viewRange()[1],
+                                        padding=0)
+            self.link_button.setText("Unlink Plots")  # Change button text to "Unlink Plots"
+            is_linked = True  # Update the state
 
     def zoom_in_1(self):
         vb = self.Plot1.getViewBox()
@@ -326,6 +347,7 @@ class Ui_MainWindow(object):
         self.Plot1.setGeometry(QtCore.QRect(120, 70, 541, 201))  # Shifted from 20 to 70
         self.Plot1.setObjectName("Plot1")
         self.Plot1.scene().sigMouseClicked.connect(self.plotClicked)  # Connect mouse click to the plot
+
         
         signal1_time_length = len(self.x1)
         signal1_value_length = len(self.y1)
@@ -340,6 +362,8 @@ class Ui_MainWindow(object):
         # Set axis labels
         self.Plot1.setLabel('bottom', "Time (s)")
         self.Plot1.setLabel('left', "Normal Signal")
+
+
         
         
         self.Plot2 = pg.PlotWidget(self.centralwidget)
