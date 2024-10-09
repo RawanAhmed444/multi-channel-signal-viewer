@@ -193,6 +193,8 @@ class Ui_MainWindow(object):
         self.ZoomIn1 = self.createButton("+", 500, 290, size=(31, 31))  # Left Zoom In button
         self.ZoomOut1 = self.createButton("-", 560, 290, size=(31, 31)) # Left Zoom Out button
         self.SS1 = self.createButton("SS", 620, 290, size=(31, 31))     # Left SS button
+        self.ZoomIn1.clicked.connect(self.zoom_in_1)
+        self.ZoomOut1.clicked.connect(self.zoom_out_1)
 
         self.Signal2 = self.createButton("Signal", 15, 470, self.signalButtonClicked)  # Left Signal button for second plot
         self.Play2 = self.createButton("Play", 110, 600)      # Left Play button for second plot
@@ -201,6 +203,8 @@ class Ui_MainWindow(object):
         self.ZoomIn2 = self.createButton("+", 500, 600, size=(31, 31))  # Left Zoom In button for second plot
         self.ZoomOut2 = self.createButton("-", 560, 600, size=(31, 31)) # Left Zoom Out button
         self.SS2 = self.createButton("SS", 620, 600, size=(31, 31))     # Left SS button for second plot
+        self.ZoomIn2.clicked.connect(self.zoom_in_2)
+        self.ZoomOut2.clicked.connect(self.zoom_out_2)
 
         # Right side buttons (renamed mirrored buttons)
         self.Signal3 = self.createButton("Signal", 695, 140, self.signalButtonClicked)   # Right Signal button
@@ -210,6 +214,8 @@ class Ui_MainWindow(object):
         self.ZoomIn3 = self.createButton("+", 1180, 290, size=(31, 31))  # Right Zoom In button
         self.ZoomOut3 = self.createButton("-", 1240, 290, size=(31, 31)) # Right Zoom Out button
         self.SS3 = self.createButton("SS", 1300, 290, size=(31, 31))     # Right SS button
+        self.ZoomIn3.clicked.connect(self.zoom_in_3)
+        self.ZoomOut3.clicked.connect(self.zoom_out_3)
 
         self.Signal4 = self.createButton("Signal", 695, 470, self.signalButtonClicked)  # Right Signal button for second plot
         self.Play4 = self.createButton("Play", 790, 600)      # Right Play button for second plot
@@ -218,6 +224,8 @@ class Ui_MainWindow(object):
         self.ZoomIn4 = self.createButton("+", 1180, 600, size=(31, 31))  # Right Zoom In button for second plot
         self.ZoomOut4 = self.createButton("-", 1240, 600, size=(31, 31)) # Right Zoom Out button
         self.SS4 = self.createButton("SS", 1300, 600, size=(31, 31))     # Right SS button for second plot
+        self.ZoomIn4.clicked.connect(self.zoom_in_4)
+        self.ZoomOut4.clicked.connect(self.zoom_out_4)
 
         self.line_vertical = QtWidgets.QFrame(self.centralwidget)
         self.line_vertical.setGeometry(QtCore.QRect(680, 0, 2, 1200))  # Vertical line
@@ -232,6 +240,40 @@ class Ui_MainWindow(object):
         self.line_horizontal.setFrameShadow(QtWidgets.QFrame.Sunken)
         self.line_horizontal.setStyleSheet("background-color: gray;")  # Same style as the vertical line
 
+
+
+
+
+    def zoom_in_1(self):
+        vb = self.Plot1.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_1(self):
+        vb = self.Plot1.getViewBox()
+        vb.scaleBy((1.2, 1.2))
+    def zoom_in_2(self):
+        vb = self.Plot2.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_2(self):
+        vb = self.Plot2.getViewBox()
+        vb.scaleBy((1.2, 1.2))
+
+    def zoom_in_3(self):
+        vb = self.Plot3.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_3(self):
+        vb = self.Plot3.getViewBox()
+        vb.scaleBy((1.2, 1.2))
+
+    def zoom_in_4(self):
+        vb = self.Plot4.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_4(self):
+        vb = self.Plot4.getViewBox()
+        vb.scaleBy((1.2, 1.2))
 
     def createButton(self, text, x, y, slot=None, size=(100, 30)):
         button = QtWidgets.QPushButton(self.centralwidget)
