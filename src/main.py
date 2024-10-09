@@ -7,6 +7,8 @@ from logic.calculate_stats import calculate_statistics
 from logic.take_snapshot import take_snapshot
 from logic.generate_pdf import generate_pdf
 from logic.move_signals import select_signal, move_selected_signal
+from logic.signal_processing import load_signal_from_file
+import pandas as pd
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -25,12 +27,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.Snapshot4.clicked.connect(lambda: self.take_snapshot(self.ui.Plot4, "Plot4"))
 
         # connect move buttons to function
-        self.ui.Move1.clicked.connect(lambda: self.move_signal(self.ui.Plot1, self.ui.Plot2))
-        self.ui.Move2.clicked.connect(lambda: self.move_signal(self.ui.Plot2, self.ui.Plot1))
+        # self.ui.Move1.clicked.connect(lambda: self.move_signal(self.ui.Plot1, self.ui.Plot2))
+        # self.ui.Move2.clicked.connect(lambda: self.move_signal(self.ui.Plot2, self.ui.Plot1))
 
         # connect generate pdf button to function ( now it is linked with zoomin1 cause
         # there is no generate pdf button at the moment)
-        self.ui.ZoomIn1.clicked.connect(self.generate_pdf)
+        self.ui.Report.clicked.connect(self.generate_pdf)
 
         # Connect plots to select signal
         self.ui.Plot1.scene().sigMouseClicked.connect(lambda event: self.on_plot_click(event, self.ui.Plot1))
@@ -80,10 +82,4 @@ if __name__ == "__main__":
     mainWindow = MainWindow()
     mainWindow.show()
     sys.exit(app.exec_())
-from logic.signal_processing import load_signal_from_file
-
-# Example usage
-filename = "src\data\signals\EEG_Normal.csv"
-signal_data = load_signal_from_file(filename)
-print(signal_data)
 
