@@ -4,6 +4,8 @@ from pyqtgraph import PlotDataItem
 from logic.signal_processing import load_signal_from_file
 import pandas as pd
 import matplotlib.pyplot as plt
+from logic.calculate_stats import calculate_statistics
+
 
 class CustomMessageBox(QtWidgets.QMessageBox):
     def __init__(self, parent=None):
@@ -90,9 +92,20 @@ class StatisticsPopup(QtWidgets.QDialog):
         closeButton.clicked.connect(self.close)
         layout.addWidget(closeButton)
 
+    def display_statistics(self, selected_signal_stats):
+        selected_signal_stats_text = (
+            f"Mean: {selected_signal_stats['mean']:.2f}\n"
+            f"Standard Deviation {selected_signal_stats['std']:.2f}\n"
+            f"Min: {selected_signal_stats['min']:.2f}\n"
+            f"Max: {selected_signal_stats['max']:.2f}\n"
+            f"Duration: {selected_signal_stats['duration']:.2f}\n"
+        )
+        self.statsLabel.setText(selected_signal_stats_text)
+
 class RightClickPopup(QtWidgets.QMenu):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, selected_signal_data=None):
         super(RightClickPopup, self).__init__(parent)
+        self.selected_signal_data = selected_signal_data
         self.setStyleSheet("""
             QMenu {
             background-color: #1D1C1C;  /* Dark gray background */
@@ -126,8 +139,16 @@ class RightClickPopup(QtWidgets.QMenu):
         self.addSeparator()
         self.addAction("Move", self.close)
         self.addSeparator()
-        self.addAction("Statistics", self.close)
-
+        self.addAction("Statistics", self.show_statistics)
+    
+    def show_statistics(self):
+        if self.selected_signal_data is not None:
+            self.hide()
+            selected_signal_stats = calculate_statistics(self.selected_signal_data)
+            stats_popup = StatisticsPopup()
+            stats_popup.display_statistics(selected_signal_stats)
+            stats_popup.exec_()
+        
     def showEvent(self, event):
         cursor_pos = QtGui.QCursor.pos()
         self.move(cursor_pos)
@@ -321,18 +342,18 @@ class Ui_MainWindow(object):
             "}\n"
         )
     
-    def plotRightClicked(self, event):
-      if event.button() == QtCore.Qt.RightButton:
-        # Display the right-click popup
-        right_click_popup = RightClickPopup()
-        right_click_popup.exec_()
+    # def plotRightClicked(self, event):
+    #   if event.button() == QtCore.Qt.RightButton:
+    #     # Display the right-click popup
+    #     right_click_popup = RightClickPopup()
+    #     right_click_popup.exec_()
 
     def initPlots(self):
         # Create two plots using PyQtGraph (shifted 50 pixels down)
         self.Plot1 = pg.PlotWidget(self.centralwidget)
         self.Plot1.setGeometry(QtCore.QRect(120, 70, 541, 201))  # Shifted from 20 to 70
         self.Plot1.setObjectName("Plot1")
-        self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
 
         signal1_time_length = len(self.x1)
         signal1_value_length = len(self.y1)
@@ -352,7 +373,7 @@ class Ui_MainWindow(object):
         self.Plot2 = pg.PlotWidget(self.centralwidget)
         self.Plot2.setGeometry(QtCore.QRect(120, 390, 541, 201))  # Shifted from 340 to 390
         self.Plot2.setObjectName("Plot2")
-        self.Plot2.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        # self.Plot2.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
 
         # Set x and y limits (adjust as needed)
         self.Plot2.setXRange(0, signal2_time_length)  # Set x-axis limits from 0 to 10
@@ -366,12 +387,12 @@ class Ui_MainWindow(object):
         self.Plot3 = pg.PlotWidget(self.centralwidget)
         self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  # Right Plot1
         self.Plot3.setObjectName("Plot3")
-        self.Plot3.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        # self.Plot3.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
 
         self.Plot4 = pg.PlotWidget(self.centralwidget)
         self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  # Right Plot2
         self.Plot4.setObjectName("Plot4")
-        self.Plot4.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        # self.Plot4.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
 
         # Example data for plotting
         self.plotData()
