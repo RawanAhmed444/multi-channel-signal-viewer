@@ -10,6 +10,14 @@ def select_signal(plot , signal):
     print("some siganl was selected")
     print(f"signal selected on plot{plot.objectName()}")
 
+# def get_selected_signal_data(signal):
+#     global select_signal
+#     if isinstance(selected_signal, pg.PlotDataItem):
+#         x_data, y_data = signal.getData()
+#         return x_data, y_data
+#     else:
+#         return None, None
+
 def move_selected_signal(source_plot, target_plot):
 
     global selected_signal
@@ -19,6 +27,10 @@ def move_selected_signal(source_plot, target_plot):
     
     x_data, y_data = selected_signal.getData()
     pen = selected_signal.opts['pen'] 
+
+    new_signal = pg.PlotDataItem(x_data, y_data, pen=pen)
+    target_plot.addItem(new_signal)
+    
     target_plot.plot(x_data, y_data, pen=pen)
     source_plot.removeItem(selected_signal)
 

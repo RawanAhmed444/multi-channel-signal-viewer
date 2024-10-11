@@ -46,18 +46,21 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_plot_click(self, event, plot_widget):
         
         items = plot_widget.listDataItems()
+
         if items:
+            # select a signal from the many signals being displayed on the plot
             for signal in items:
                 select_signal(plot_widget, signal)
-                y_data = self.get_plot_data(plot_widget)
+
+            x_data, y_data = self.get_plot_data(plot_widget)
 
         if event.button() == QtCore.Qt.RightButton:
-            #pass signal data
-            context_menu = RightClickPopup(parent=self, selected_signal_data=y_data)
-            context_menu.exec_(QPoint(int(event.screenPos().x()), int(event.screenPos().y()))) #show the menu at the mouse position 
 
-    def move_signal(self, source_plot, target_plot):
-        move_selected_signal(source_plot, target_plot)
+            target_plot = self.ui.Plot2 if plot_widget == self.ui.Plot1 else self.ui.Plot1
+
+            #pass selected signal data to the context menu
+            context_menu = RightClickPopup(parent=self, selected_signal_data=y_data, source_plot=plot_widget, target_plot=target_plot)
+            context_menu.exec_(QPoint(int(event.screenPos().x()), int(event.screenPos().y()))) #show the menu at the mouse position 
 
     # linking this to take_snapshot file
     def take_snapshot(self, plot_widget, plot_name):
@@ -73,13 +76,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def get_plot_data(self, plot_widget):
         items = plot_widget.listDataItems()
         full_y_data = []
+        x_data = None
         print("Number of items in plot:", len(items))  # Debugging line
 
         for signal in items: 
             x_data, y_data = signal.getData()
             full_y_data.extend(y_data)
 
-        return full_y_data
+        return x_data, full_y_data
         
     # linking this to generate_pdf file
     def generate_pdf(self):

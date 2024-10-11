@@ -6,7 +6,7 @@ from logic.signal_processing import load_signal_from_file
 import pandas as pd
 import matplotlib.pyplot as plt
 from logic.calculate_stats import calculate_statistics
-
+from logic.move_signals import move_selected_signal
 
 class CustomMessageBox(QtWidgets.QMessageBox):
     def __init__(self, parent=None):
@@ -104,9 +104,11 @@ class StatisticsPopup(QtWidgets.QDialog):
         self.statsLabel.setText(selected_signal_stats_text)
 
 class RightClickPopup(QtWidgets.QMenu):
-    def __init__(self, parent=None, selected_signal_data=None):
+    def __init__(self, parent=None, selected_signal_data=None, source_plot=None, target_plot=None):
         super(RightClickPopup, self).__init__(parent)
         self.selected_signal_data = selected_signal_data
+        self.source_plot = source_plot
+        self.target_plot = target_plot
         self.setStyleSheet("""
             QMenu {
             background-color: #1D1C1C;  /* Dark gray background */
@@ -138,9 +140,14 @@ class RightClickPopup(QtWidgets.QMenu):
         self.addSeparator()
         self.addAction("Hide", self.close)
         self.addSeparator()
-        self.addAction("Move", self.close)
+        self.addAction("Move", self.move_signal)
         self.addSeparator()
         self.addAction("Statistics", self.show_statistics)
+
+    def move_signal(self):
+        if self.source_plot and self.target_plot:
+            move_selected_signal(self.source_plot, self.target_plot)
+        self.close()
     
     def show_statistics(self):
         if self.selected_signal_data is not None:
@@ -416,17 +423,21 @@ class Ui_MainWindow(object):
             next_x = self.x1[self.plot_index]
             next_y = self.y1[self.plot_index]
             self.plot_index += 1
-
+            
+            self.Plot1.clear()
             self.Plot1.plot(self.x1[:self.plot_index], self.y1[:self.plot_index])  # Update the plot data
-            plt.pause(0.01)  # Adjust the pause time for animation speed
+            self.Plot1.autoRange()
+            # plt.pause(0.01)  # Adjust the pause time for animation speed
             
         if self.plot_index < len(self.x2):
             next_x = self.x2[self.plot_index]
             next_y = self.y2[self.plot_index]
             self.plot_index += 1
-              
+
+            self.Plot2.clear()
             self.Plot2.plot(self.x2[:self.plot_index], self.y2[:self.plot_index])  # Update the plot data
-            plt.pause(0.01)  # Adjust the pause time for animation speed
+            self.Plot2.autoRange()  
+            # plt.pause(0.01)  # Adjust the pause time for animation speed
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
