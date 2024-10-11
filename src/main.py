@@ -7,8 +7,6 @@ from logic.calculate_stats import calculate_statistics
 from logic.take_snapshot import take_snapshot
 from logic.generate_pdf import generate_pdf
 from logic.move_signals import select_signal, move_selected_signal
-from logic.signal_processing import load_signal_from_file
-import pandas as pd
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):

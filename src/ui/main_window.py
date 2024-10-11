@@ -1,9 +1,9 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
-import numpy as np
 from pyqtgraph import PlotDataItem
 from logic.signal_processing import load_signal_from_file
 import pandas as pd
+import matplotlib.pyplot as plt
 
 class CustomMessageBox(QtWidgets.QMessageBox):
     def __init__(self, parent=None):
@@ -152,10 +152,10 @@ class Ui_MainWindow(object):
         super().__init__()
         self.plot_index = 0  # Initialize plot_index
 
-        normal_signal = "src\data\signals\ECG_Normal.csv"
+        normal_signal = "src\\data\\signals\\ECG_Normal.csv"
         self.x1, self.y1 = self.convert_signal_values_to_numeric(normal_signal)
         
-        abnormal_signal = "src\data\signals\ECG_Abnormal.csv"
+        abnormal_signal = "src\\data\\signals\\ECG_Abnormal.csv"
         self.x2, self.y2 = self.convert_signal_values_to_numeric(abnormal_signal)
     
     def setupUi(self, MainWindow):
@@ -385,17 +385,27 @@ class Ui_MainWindow(object):
 
         # Create a timer to update the plot dynamically
         self.timer = QtCore.QTimer()
-        self.timer.setInterval(100)  # Adjust the interval as needed
+        self.timer.setInterval(150)  # Adjust the interval as needed
         self.timer.timeout.connect(self.update_plot)
         self.timer.start()
 
     def update_plot(self):
+    # Update the plot with new data points
         if self.plot_index < len(self.x1):
             next_x = self.x1[self.plot_index]
             next_y = self.y1[self.plot_index]
             self.plot_index += 1
 
-            self.Plot1.plot(self.x1[:self.plot_index], self.y1[:self.plot_index])  # Update the plot data
+            # Calculate the start and end indices for the dynamic time window
+            start_index = max(self.plot_index - 200, 0)  # Adjust the window size as needed
+            end_index = self.plot_index
+
+            # Update the plot with the dynamic time window
+            self.Plot1.plot(self.x1[start_index:end_index], self.y1[start_index:end_index], pen='r', clear=True)
+
+            # Set the x-axis limits to match the current time window
+            self.Plot1.setXRange(self.x1[start_index], self.x1[end_index])
+
             plt.pause(0.01)  # Adjust the pause time for animation speed
             
         if self.plot_index < len(self.x2):
@@ -403,7 +413,16 @@ class Ui_MainWindow(object):
             next_y = self.y2[self.plot_index]
             self.plot_index += 1
               
-            self.Plot2.plot(self.x2[:self.plot_index], self.y2[:self.plot_index])  # Update the plot data
+            # Calculate the start and end indices for the dynamic time window
+            start_index = max(self.plot_index - 200, 0)  # Adjust the window size as needed
+            end_index = self.plot_index
+
+            # Update the plot with the dynamic time window
+            self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=True)
+
+            # Set the x-axis limits to match the current time window
+            self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
+
             plt.pause(0.01)  # Adjust the pause time for animation speed
 
     def retranslateUi(self, MainWindow):
