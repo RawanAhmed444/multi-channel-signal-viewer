@@ -1,6 +1,5 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
-import numpy as np
 from pyqtgraph import PlotDataItem
 from logic.signal_processing import load_signal_from_file
 import pandas as pd
@@ -104,11 +103,14 @@ class StatisticsPopup(QtWidgets.QDialog):
         self.statsLabel.setText(selected_signal_stats_text)
 
 class RightClickPopup(QtWidgets.QMenu):
-    def __init__(self, parent=None, selected_signal_data=None, source_plot=None, target_plot=None):
+    def __init__(self, parent=None, selected_signal_data=None, source_plot=None, target_plot=None,source_timer=None, target_timer=None, move_signal=None):
         super(RightClickPopup, self).__init__(parent)
         self.selected_signal_data = selected_signal_data
         self.source_plot = source_plot
         self.target_plot = target_plot
+        self.source_timer = source_timer 
+        self.target_timer = target_timer  
+        self.move_signal = move_signal
         self.setStyleSheet("""
             QMenu {
             background-color: #1D1C1C;  /* Dark gray background */
@@ -140,15 +142,15 @@ class RightClickPopup(QtWidgets.QMenu):
         self.addSeparator()
         self.addAction("Hide", self.close)
         self.addSeparator()
-        self.addAction("Move", self.move_signal)
+        self.addAction("Move" , lambda: self.move_signal)
         self.addSeparator()
         self.addAction("Statistics", self.show_statistics)
 
     def move_signal(self):
         if self.source_plot and self.target_plot:
-            move_selected_signal(self.source_plot, self.target_plot)
-        self.close()
-    
+            self.move_signal(self.source_plot, self.target_plot, self.source_timer, self.target_timer)
+        self.close() 
+
     def show_statistics(self):
         if self.selected_signal_data is not None:
             self.hide()
@@ -177,14 +179,16 @@ class Ui_MainWindow(object):
         
         return x, y
     
-    def __init__(self):
+    def __init__(self, play_stop_signals):
         super().__init__()
+        self.play_stop_signals = play_stop_signals
         self.plot_index = 0  # Initialize plot_index
+        self.parent = None
 
-        normal_signal = "src\data\signals\ECG_Normal.csv"
+        normal_signal = "src\\data\\signals\\ECG_Normal.csv"
         self.x1, self.y1 = self.convert_signal_values_to_numeric(normal_signal)
         
-        abnormal_signal = "src\data\signals\ECG_Abnormal.csv"
+        abnormal_signal = "src\\data\\signals\\ECG_Abnormal.csv"
         self.x2, self.y2 = self.convert_signal_values_to_numeric(abnormal_signal)
     
     def setupUi(self, MainWindow):
@@ -211,6 +215,8 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        self.parent = MainWindow
+
 
     def initButtons(self):
 
@@ -235,7 +241,7 @@ class Ui_MainWindow(object):
         self.ZoomIn3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 1180, 290, )  # Right Zoom In button
         self.ZoomOut3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 1240, 290, ) # Right Zoom Out button
         self.Snapshot3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 1300, 290, )     # Right SS button
-        self.Play_Stop3 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 1060, 290, )    # Right Toggle P/S button
+        self.Play_stop3 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 1060, 290, )    # Right Toggle P/S button
         
         self.Signal4 = self.createButton("Signal", 695, 390)  # Right Signal button for second plot
         self.Speed4 = self.createSpeedButton(1120, 600)       # Right Speed button for second plot
@@ -272,11 +278,14 @@ class Ui_MainWindow(object):
        button.current_speed_index = button.speeds.index(default_speed)
        return button
 
-    def toggleSpeed(self, button):
+    #function responsible for speed
+    def toggleSpeed(self, button, plot_id):
+       button.speeds = [1.0, 1.5, 2.0, 0.25, 0.5] 
        button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
        new_speed = button.speeds[button.current_speed_index]
        button.setText(f"{new_speed}x")
        print(f"Speed set to: {new_speed}x")
+       self.parent.timers[plot_id].setInterval(int(150 / new_speed))
 
     def createToggleButton(self, icon1_path, icon2_path, x, y, size=(31, 31)):
         button = QtWidgets.QPushButton(self.centralwidget)
@@ -350,18 +359,11 @@ class Ui_MainWindow(object):
             "}\n"
         )
     
-    # def plotRightClicked(self, event):
-    #   if event.button() == QtCore.Qt.RightButton:
-    #     # Display the right-click popup
-    #     right_click_popup = RightClickPopup()
-    #     right_click_popup.exec_()
-
     def initPlots(self):
         # Create two plots using PyQtGraph (shifted 50 pixels down)
         self.Plot1 = pg.PlotWidget(self.centralwidget)
         self.Plot1.setGeometry(QtCore.QRect(120, 70, 541, 201))  # Shifted from 20 to 70
         self.Plot1.setObjectName("Plot1")
-        # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
 
         signal1_time_length = len(self.x1)
         signal1_value_length = len(self.y1)
@@ -381,7 +383,6 @@ class Ui_MainWindow(object):
         self.Plot2 = pg.PlotWidget(self.centralwidget)
         self.Plot2.setGeometry(QtCore.QRect(120, 390, 541, 201))  # Shifted from 340 to 390
         self.Plot2.setObjectName("Plot2")
-        # self.Plot2.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
 
         # Set x and y limits (adjust as needed)
         self.Plot2.setXRange(0, signal2_time_length)  # Set x-axis limits from 0 to 10
@@ -395,12 +396,10 @@ class Ui_MainWindow(object):
         self.Plot3 = pg.PlotWidget(self.centralwidget)
         self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  # Right Plot1
         self.Plot3.setObjectName("Plot3")
-        # self.Plot3.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
 
         self.Plot4 = pg.PlotWidget(self.centralwidget)
         self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  # Right Plot2
         self.Plot4.setObjectName("Plot4")
-        # self.Plot4.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
 
         # Example data for plotting
         self.plotData()
@@ -414,30 +413,48 @@ class Ui_MainWindow(object):
 
         # Create a timer to update the plot dynamically
         self.timer = QtCore.QTimer()
-        self.timer.setInterval(100)  # Adjust the interval as needed
+        self.timer.setInterval(150)  # Adjust the interval as needed
         self.timer.timeout.connect(self.update_plot)
         self.timer.start()
 
-    def update_plot(self):
-        if self.plot_index < len(self.x1):
-            next_x = self.x1[self.plot_index]
-            next_y = self.y1[self.plot_index]
-            self.plot_index += 1
-            
-            self.Plot1.clear()
-            self.Plot1.plot(self.x1[:self.plot_index], self.y1[:self.plot_index])  # Update the plot data
-            self.Plot1.autoRange()
-            # plt.pause(0.01)  # Adjust the pause time for animation speed
-            
-        if self.plot_index < len(self.x2):
-            next_x = self.x2[self.plot_index]
-            next_y = self.y2[self.plot_index]
-            self.plot_index += 1
+    def update_plot(self, plot_id):
+        # Update the plot with new data points
+        if self.play_stop_signals.is_playing(plot_id):  # For Plot1
+            if plot_id == 1:
+                if self.plot_index < len(self.x1):
+                    next_x = self.x1[self.plot_index]
+                    next_y = self.y1[self.plot_index]
+                    self.plot_index += 1
 
-            self.Plot2.clear()
-            self.Plot2.plot(self.x2[:self.plot_index], self.y2[:self.plot_index])  # Update the plot data
-            self.Plot2.autoRange()  
-            # plt.pause(0.01)  # Adjust the pause time for animation speed
+                    # Calculate the start and end indices for the dynamic time window
+                    start_index = max(self.plot_index - 200, 0)  # Adjust the window size as needed
+                    end_index = self.plot_index
+
+                    # Update the plot with the dynamic time window
+                    self.Plot1.plot(self.x1[start_index:end_index], self.y1[start_index:end_index], pen='r', clear=True)
+
+                    # Set the x-axis limits to match the current time window
+                    self.Plot1.setXRange(self.x1[start_index], self.x1[end_index])
+
+                    plt.pause(0.01)  # Adjust the pause time for animation speed
+ 
+        if plot_id == 2 and self.play_stop_signals.is_playing(plot_id):     
+            if self.plot_index < len(self.x2):
+                next_x = self.x2[self.plot_index]
+                next_y = self.y2[self.plot_index]
+                self.plot_index += 1
+                
+                # Calculate the start and end indices for the dynamic time window
+                start_index = max(self.plot_index - 200, 0)  # Adjust the window size as needed
+                end_index = self.plot_index
+
+                # Update the plot with the dynamic time window
+                self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=True)
+
+                # Set the x-axis limits to match the current time window
+                self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
+
+                plt.pause(0.01)  # Adjust the pause time for animation speed
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
