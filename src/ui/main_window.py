@@ -1,5 +1,8 @@
+import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal
+from PyQt5.QtGui import QPainter, QPen
 from pyqtgraph import PlotDataItem
 from logic.signal_processing import load_signal_from_file
 import pandas as pd
@@ -164,6 +167,102 @@ class RightClickPopup(QtWidgets.QMenu):
         self.move(cursor_pos)
         super(RightClickPopup, self).showEvent(event)
 
+
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal
+from PyQt5.QtGui import QPainter, QPen
+from PyQt5.QtWidgets import QGraphicsView
+import pyqtgraph as pg
+
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal
+from PyQt5.QtGui import QPainter, QPen
+import pyqtgraph as pg
+
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal
+from PyQt5.QtGui import QPainter, QPen
+import pyqtgraph as pg
+
+
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal
+from PyQt5.QtGui import QPainter, QPen
+import pyqtgraph as pg
+
+# class SelectablePlot(pg.PlotWidget):
+#     def __init__(self, parent=None):
+#         super(SelectablePlot, self).__init__(parent)
+#
+#         # Selection-related attributes
+#         self.selection_start = None
+#         self.selection_end = None
+#         self.selection_rect = None
+#         self.waiting_for_selection = False  # Flag to indicate if a selection is expected
+#
+#
+#         # Set the widget to be focusable and track mouse movements
+#         self.setMouseTracking(True)
+#         # Enable mouse interaction (panning and scrolling)
+#         self.setMouseEnabled(True, True)  # Enable panning on both axes
+#         self.setInteractive(True)  # Allow scrolling (zooming)
+#
+#
+#     def paintEvent(self, event):
+#         # Call the base paint event for the widget
+#         super(SelectablePlot, self).paintEvent(event)
+#
+#         # Draw selection rectangle if it exists
+#         if self.selection_rect is not None:
+#             painter = QPainter(self)
+#             painter.setPen(QPen(Qt.red, 2, Qt.DashLine))  # Red dashed line for selection
+#             painter.setBrush(Qt.transparent)  # Set the fill to transparent
+#             painter.drawRect(self.selection_rect)
+#
+#     def mousePressEvent(self, event):
+#         if self.waiting_for_selection and event.button() == Qt.LeftButton:
+#             self.selection_start = event.pos()
+#             self.selection_rect = QRectF(self.selection_start, self.selection_start)  # Start selection rect
+#             self.setMouseEnabled(False, False)  # Disable panning while selecting
+#             self.update()  # Trigger a repaint immediately to show the start of selection
+#         else:
+#             # Allow default panning behavior when not in selection mode
+#             super(SelectablePlot, self).mousePressEvent(event)
+#
+#     def mouseMoveEvent(self, event):
+#         def mouseMoveEvent(self, event):
+#             if self.waiting_for_selection and self.selection_start is not None:
+#                 # Update the selection rectangle
+#                 self.selection_end = event.pos()
+#                 self.selection_rect = QRectF(self.selection_start, self.selection_end).normalized()
+#                 self.update()  # Trigger a repaint
+#             else:
+#                 # Allow default mouse move behavior (panning)
+#                 super(SelectablePlot, self).mouseMoveEvent(event)
+#
+#     def mouseReleaseEvent(self, event):
+#         if self.waiting_for_selection and event.button() == Qt.LeftButton and self.selection_start is not None:
+#             self.selection_end = event.pos()
+#             self.processSelection()
+#
+#             # Reset selection
+#             self.selection_start = None
+#             self.selection_end = None
+#             self.selection_rect = None
+#             self.waiting_for_selection = False  # Disable further selections until the button is pressed again
+#             self.setMouseEnabled(True, True)  # Re-enable panning after selection is done
+#             self.update()  # Trigger a repaint
+#         else:
+#             # Allow default mouse release behavior
+#             super(SelectablePlot, self).mouseReleaseEvent(event)
+#
+#     def wheelEvent(self, event):
+#         if not self.waiting_for_selection:
+#             # Allow default scrolling (zooming) behavior
+#             super(SelectablePlot, self).wheelEvent(event)
+#
+#     def processSelection(self):
+#         if self.selection_start and self.selection_end:
+#             x_min = min(self.selection_start.x(), self.selection_end.x())
+#             x_max = max(self.selection_start.x(), self.selection_end.x())
+#             print(f"Selected range: {x_min} to {x_max}")
+
 class Ui_MainWindow(object):
     def convert_signal_values_to_numeric(self, filename):
         signal_data = load_signal_from_file(filename)
@@ -227,14 +326,24 @@ class Ui_MainWindow(object):
         self.ZoomOut1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 550, 290, ) # Left Zoom Out button
         self.Snapshot1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 610, 290, )     # Left SS button
         self.Play_stop1 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 370, 290, )    # Left Toggle P/S button
-        
+        self.GlueButton = self.createButton("Glue", 1,1)
+        self.ZoomIn1.clicked.connect(self.zoom_in_1)
+        self.ZoomOut1.clicked.connect(self.zoom_out_1)
+        self.Link1.clicked.connect(self.link_plots)
+        # self.GlueButton.clicked.connect(self.startSelection)
+
+
+
         self.Signal2 = self.createButton("Signal", 15, 390)   # Left Signal button with icon
         self.Speed2 = self.createSpeedButton(430, 600)       # Left Speed button for second plot
         self.ZoomIn2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 490, 600, )  # Left Zoom In button for second plot
         self.ZoomOut2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 550, 600, ) # Left Zoom Out button
         self.Snapshot2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 610, 600, )     # Left SS button for second plot
         self.Play_stop2 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 370, 600, )    # Left Toggle P/S button for second plot
-        
+        self.ZoomIn2.clicked.connect(self.zoom_in_2)
+        self.ZoomOut2.clicked.connect(self.zoom_out_2)
+
+
         # Right side buttons (renamed mirrored buttons)
         self.Signal3 = self.createButton("Signal", 695, 70)   # Right Signal button
         self.Speed3 = self.createSpeedButton(1120, 290)       # Right Speed button
@@ -251,7 +360,65 @@ class Ui_MainWindow(object):
         self.Play_stop4 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 1060, 600, )    # Right Toggle P/S button for second plot
     
         self.Report = self.createButton("Report", 605, 645, size=(150, 40), font_size=24)  # Report button
-    
+
+    # def startSelection(self):
+    #     """Method to activate selection functionality once when button is pressed."""
+    #     self.waiting_for_selection = True
+
+
+    def zoom_in_1(self):
+        vb = self.Plot1.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_1(self):
+        vb = self.Plot1.getViewBox()
+        vb.scaleBy((1.2, 1.2))
+
+    def zoom_in_2(self):
+        vb = self.Plot2.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_2(self):
+        vb = self.Plot2.getViewBox()
+        vb.scaleBy((1.2, 1.2))
+
+    def zoom_in_3(self):
+        vb = self.Plot3.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_3(self):
+        vb = self.Plot3.getViewBox()
+        vb.scaleBy((1.2, 1.2))
+
+    def zoom_in_4(self):
+        vb = self.Plot4.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_4(self):
+        vb = self.Plot4.getViewBox()
+        vb.scaleBy((1.2, 1.2))
+
+    def link_plots(self):
+        global is_linked
+        is_linked = False
+        if is_linked:
+            # Unlink the plots
+            self.Plot2.setXLink(None)
+            self.Plot2.setYLink(None)
+            self.link_button.setText("Link Plots")  # Change button text to "Link Plots"
+            is_linked = False  # Update the state
+        else:
+            # Link the plots and set the same zoom
+            self.Plot2.setXLink(self.Plot1)
+            self.Plot2.setYLink(self.Plot1)  # Uncomment if you want to link y-axis as well
+
+            # Synchronize zoom levels
+            self.Plot2.getViewBox().setRange(xRange=self.Plot1.getViewBox().viewRange()[0],
+                                             yRange=self.Plot1.getViewBox().viewRange()[1],
+                                             padding=0)
+            self.link_button.setText("Unlink Plots")  # Change button text to "Unlink Plots"
+            is_linked = True  # Update the state
+
     def createButton(self, text, x, y, slot=None, size=(100, 30), font_size=18):
         button = QtWidgets.QPushButton(self.centralwidget)
         button.setGeometry(QtCore.QRect(x, y, *size))
@@ -361,6 +528,7 @@ class Ui_MainWindow(object):
     
     def initPlots(self):
         # Create two plots using PyQtGraph (shifted 50 pixels down)
+        # self.Plot1 = SelectablePlot(self.centralwidget)
         self.Plot1 = pg.PlotWidget(self.centralwidget)
         self.Plot1.setGeometry(QtCore.QRect(120, 70, 541, 201))  # Shifted from 20 to 70
         self.Plot1.setObjectName("Plot1")
@@ -379,7 +547,9 @@ class Ui_MainWindow(object):
         self.Plot1.setLabel('bottom', "Time (s)")
         self.Plot1.setLabel('left', "Normal Signal")
 
+
         # Increase the y-coordinate for the second plot
+        # self.Plot2 = SelectablePlot(self.centralwidget)
         self.Plot2 = pg.PlotWidget(self.centralwidget)
         self.Plot2.setGeometry(QtCore.QRect(120, 390, 541, 201))  # Shifted from 340 to 390
         self.Plot2.setObjectName("Plot2")
@@ -392,7 +562,9 @@ class Ui_MainWindow(object):
         self.Plot2.setLabel('bottom', "Time (s)")
         self.Plot2.setLabel('left', "Abnormal Signal")
 
+
         # Mirrored plots
+        # self.Plot3 = SelectablePlot(self.centralwidget)
         self.Plot3 = pg.PlotWidget(self.centralwidget)
         self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  # Right Plot1
         self.Plot3.setObjectName("Plot3")
@@ -403,6 +575,8 @@ class Ui_MainWindow(object):
 
         # Example data for plotting
         self.plotData()
+
+
 
     def plotData(self):
         self.Plot1.enableAutoRange()  # Enable automatic scaling of axes
