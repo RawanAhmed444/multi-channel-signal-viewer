@@ -22,6 +22,6 @@ def load_signal_from_file(filename):
 #     # Extract the converted data
 #     x = df[0].values
 #     y = df[1].values
-    
+
 #     return x, y
-    
+

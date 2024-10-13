@@ -9,6 +9,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from logic.calculate_stats import calculate_statistics
 from logic.move_signals import move_selected_signal
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
 
 class CustomMessageBox(QtWidgets.QMessageBox):
     def __init__(self, parent=None):
@@ -284,12 +286,10 @@ class Ui_MainWindow(object):
         self.plot_index = 0  # Initialize plot_index
         self.parent = None
 
-        normal_signal = "src\\data\\signals\\ECG_Normal.csv"
-        self.x1, self.y1 = self.convert_signal_values_to_numeric(normal_signal)
-        
-        abnormal_signal = "src\\data\\signals\\ECG_Abnormal.csv"
-        self.x2, self.y2 = self.convert_signal_values_to_numeric(abnormal_signal)
-    
+        self.x1, self.y1 = [0], [0]
+        self.x2, self.y2 = [0], [0]
+
+        #
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1920, 1080)
@@ -326,7 +326,10 @@ class Ui_MainWindow(object):
         self.ZoomOut1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 550, 290, ) # Left Zoom Out button
         self.Snapshot1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 610, 290, )     # Left SS button
         self.Play_stop1 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 370, 290, )    # Left Toggle P/S button
-        self.GlueButton = self.createButton("Glue", 1,1)
+        self.Load1Button = self.createButton("Graph1", 1,1)
+        self.Load2Button = self.createButton("Graph2", 100,1)
+        self.Load1Button.clicked.connect(self.load_first_signal)
+        self.Load2Button.clicked.connect(self.load_second_signal)
         self.ZoomIn1.clicked.connect(self.zoom_in_1)
         self.ZoomOut1.clicked.connect(self.zoom_out_1)
         self.Link1.clicked.connect(self.link_plots)
@@ -365,6 +368,29 @@ class Ui_MainWindow(object):
     #     """Method to activate selection functionality once when button is pressed."""
     #     self.waiting_for_selection = True
 
+    def load_first_signal(self):
+        # Open the file dialog for the first signal
+        filename = askopenfilename(title="Select the first signal file",
+                                   filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])
+        if filename:
+            try:
+                # Load the data from the first file
+                self.x1, self.y1 = self.convert_signal_values_to_numeric(filename)
+                print(f"Loaded first signal from {filename}")
+            except Exception as e:
+                print(f"Error loading first file: {e}")
+
+    def load_second_signal(self):
+        # Open the file dialog for the second signal
+        filename = askopenfilename(title="Select the second signal file",
+                                   filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])
+        if filename:
+            try:
+                # Load the data from the second file
+                self.x2, self.y2 = self.convert_signal_values_to_numeric(filename)
+                print(f"Loaded second signal from {filename}")
+            except Exception as e:
+                print(f"Error loading second file: {e}")
 
     def zoom_in_1(self):
         vb = self.Plot1.getViewBox()
