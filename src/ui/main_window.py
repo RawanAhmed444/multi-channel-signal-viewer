@@ -179,6 +179,7 @@ class RightClickPopup(QtWidgets.QMenu):
         super(RightClickPopup, self).showEvent(event)
 
 class Ui_MainWindow(object):
+
     def convert_signal_values_to_numeric(self, filename):
         signal_data = load_signal_from_file(filename)
         df = pd.DataFrame(signal_data)
@@ -238,7 +239,8 @@ class Ui_MainWindow(object):
     def initButtons(self):
 
         self.Signal1 = self.createButton("Signal", 15, 70)   # Left Signal button with icon
-        self.Link1 = self.createButton("Link To Graph 2", 140, 290, size=(200, 31))   # Left Link button
+        self.Link = self.createButton("Link Plots", 140, 290, size=(200, 31))   # Left Link button
+        self.is_linked = False
         self.Speed1 = self.createSpeedButton(430, 290)       # Left Speed button
         self.ZoomIn1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 490, 290, )  # Left Zoom In button
         self.ZoomOut1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 550, 290, ) # Left Zoom Out button
@@ -246,13 +248,10 @@ class Ui_MainWindow(object):
         self.Play_stop1 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 370, 290, )    # Left Toggle P/S button
 
         # self.GlueButton = self.createButton("Glue", 1,1)
-        self.Load1Button = self.createButton("Graph1", 1,1)
-        self.Load2Button = self.createButton("Graph2", 100,1)
-        self.Load1Button.clicked.connect(self.load_first_signal)
-        self.Load2Button.clicked.connect(self.load_second_signal)
+        self.Signal1.clicked.connect(self.load_first_signal)
         self.ZoomIn1.clicked.connect(self.zoom_in_1)
         self.ZoomOut1.clicked.connect(self.zoom_out_1)
-        self.Link1.clicked.connect(self.link_plots)
+        self.Link.clicked.connect(self.link_plots)
         
         self.Signal2 = self.createButton("Signal", 15, 390)   # Left Signal button with icon
         self.Speed2 = self.createSpeedButton(430, 600)       # Left Speed button for second plot
@@ -260,7 +259,7 @@ class Ui_MainWindow(object):
         self.ZoomOut2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 550, 600, ) # Left Zoom Out button
         self.Snapshot2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 610, 600, )     # Left SS button for second plot
         self.Play_stop2 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 370, 600, )    # Left Toggle P/S button for second plot
-
+        self.Signal2.clicked.connect(self.load_second_signal)
         self.ZoomIn2.clicked.connect(self.zoom_in_2)
         self.ZoomOut2.clicked.connect(self.zoom_out_2)
         
@@ -337,24 +336,22 @@ class Ui_MainWindow(object):
         vb.scaleBy((1.2, 1.2))
 
     def link_plots(self):
-        global is_linked
-        is_linked = False
-        if is_linked:
+        if self.is_linked:
             # Unlink the plots
             self.Plot2.setXLink(None)
             self.Plot2.setYLink(None)
-            self.link_button.setText("Link Plots")  # Change button text to "Link Plots"
-            is_linked = False  # Update the state
+            self.Link.setText("Link Plots")  # Change button text to "Link Plots"
+            self.is_linked = False  # Update the state
         else:
             # Link the plots and set the same zoom
             self.Plot2.setXLink(self.Plot1)
-            self.Plot2.setYLink(self.Plot1)  # Uncomment if you want to link y-axis as well
+            self.Plot2.setYLink(self.Plot1)
             # Synchronize zoom levels
             self.Plot2.getViewBox().setRange(xRange=self.Plot1.getViewBox().viewRange()[0],
                                              yRange=self.Plot1.getViewBox().viewRange()[1],
                                              padding=0)
-            self.link_button.setText("Unlink Plots")  # Change button text to "Unlink Plots"
-            is_linked = True  # Update the state
+            self.Link.setText("Unlink Plots")  # Change button text to "Unlink Plots"
+            self.is_linked = True  # Update the state
     
     def createButton(self, text, x, y, slot=None, size=(100, 30), font_size=18):
         button = QtWidgets.QPushButton(self.centralwidget)
