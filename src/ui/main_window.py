@@ -1,3 +1,4 @@
+import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from pyqtgraph import PlotDataItem
@@ -6,6 +7,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from logic.calculate_stats import calculate_statistics
 from logic.move_signals import move_selected_signal
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal
+from PyQt5.QtGui import QPainter, QPen
+from PyQt5.QtWidgets import QGraphicsView
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
+
 
 class CustomMessageBox(QtWidgets.QMessageBox):
     def __init__(self, parent=None):
@@ -192,12 +199,15 @@ class Ui_MainWindow(object):
         self.plot_index = 0  # Initialize plot_index
         self.parent = None
 
-        normal_signal = "src\\data\\signals\\ECG_Normal.csv"
-        self.x1, self.y1 = self.convert_signal_values_to_numeric(normal_signal)
+        # normal_signal = "src\\data\\signals\\ECG_Normal.csv"
+        # self.x1, self.y1 = self.convert_signal_values_to_numeric(normal_signal)
         
-        abnormal_signal = "src\\data\\signals\\ECG_Abnormal.csv"
-        self.x2, self.y2 = self.convert_signal_values_to_numeric(abnormal_signal)
+        # abnormal_signal = "src\\data\\signals\\ECG_Abnormal.csv"
+        # self.x2, self.y2 = self.convert_signal_values_to_numeric(abnormal_signal)
     
+        self.x1, self.y1 = [0], [0]
+        self.x2, self.y2 = [0], [0]
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1920, 1080)
@@ -234,6 +244,15 @@ class Ui_MainWindow(object):
         self.ZoomOut1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 550, 290, ) # Left Zoom Out button
         self.Snapshot1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 610, 290, )     # Left SS button
         self.Play_stop1 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 370, 290, )    # Left Toggle P/S button
+
+        # self.GlueButton = self.createButton("Glue", 1,1)
+        self.Load1Button = self.createButton("Graph1", 1,1)
+        self.Load2Button = self.createButton("Graph2", 100,1)
+        self.Load1Button.clicked.connect(self.load_first_signal)
+        self.Load2Button.clicked.connect(self.load_second_signal)
+        self.ZoomIn1.clicked.connect(self.zoom_in_1)
+        self.ZoomOut1.clicked.connect(self.zoom_out_1)
+        self.Link1.clicked.connect(self.link_plots)
         
         self.Signal2 = self.createButton("Signal", 15, 390)   # Left Signal button with icon
         self.Speed2 = self.createSpeedButton(430, 600)       # Left Speed button for second plot
@@ -241,6 +260,9 @@ class Ui_MainWindow(object):
         self.ZoomOut2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 550, 600, ) # Left Zoom Out button
         self.Snapshot2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 610, 600, )     # Left SS button for second plot
         self.Play_stop2 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 370, 600, )    # Left Toggle P/S button for second plot
+
+        self.ZoomIn2.clicked.connect(self.zoom_in_2)
+        self.ZoomOut2.clicked.connect(self.zoom_out_2)
         
         # Right side buttons (renamed mirrored buttons)
         self.Signal3 = self.createButton("Signal", 695, 70)   # Right Signal button
@@ -258,6 +280,81 @@ class Ui_MainWindow(object):
         self.Play_stop4 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 1060, 600, )    # Right Toggle P/S button for second plot
     
         self.Report = self.createButton("Report", 605, 645, size=(150, 40), font_size=24)  # Report button
+    
+    def load_first_signal(self):
+        # Open the file dialog for the first signal
+        filename = askopenfilename(title="Select the first signal file",
+                                   filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])
+        if filename:
+            try:
+                # Load the data from the first file
+                self.x1, self.y1 = self.convert_signal_values_to_numeric(filename)
+                print(f"Loaded first signal from {filename}")
+            except Exception as e:
+                print(f"Error loading first file: {e}")
+    def load_second_signal(self):
+        # Open the file dialog for the second signal
+        filename = askopenfilename(title="Select the second signal file",
+                                   filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])
+        if filename:
+            try:
+                # Load the data from the second file
+                self.x2, self.y2 = self.convert_signal_values_to_numeric(filename)
+                print(f"Loaded second signal from {filename}")
+            except Exception as e:
+                print(f"Error loading second file: {e}")
+
+    def zoom_in_1(self):
+        vb = self.Plot1.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_1(self):
+        vb = self.Plot1.getViewBox()
+        vb.scaleBy((1.2, 1.2))
+
+    def zoom_in_2(self):
+        vb = self.Plot2.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_2(self):
+        vb = self.Plot2.getViewBox()
+        vb.scaleBy((1.2, 1.2))
+
+    def zoom_in_3(self):
+        vb = self.Plot3.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_3(self):
+        vb = self.Plot3.getViewBox()
+        vb.scaleBy((1.2, 1.2))
+
+    def zoom_in_4(self):
+        vb = self.Plot4.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_4(self):
+        vb = self.Plot4.getViewBox()
+        vb.scaleBy((1.2, 1.2))
+
+    def link_plots(self):
+        global is_linked
+        is_linked = False
+        if is_linked:
+            # Unlink the plots
+            self.Plot2.setXLink(None)
+            self.Plot2.setYLink(None)
+            self.link_button.setText("Link Plots")  # Change button text to "Link Plots"
+            is_linked = False  # Update the state
+        else:
+            # Link the plots and set the same zoom
+            self.Plot2.setXLink(self.Plot1)
+            self.Plot2.setYLink(self.Plot1)  # Uncomment if you want to link y-axis as well
+            # Synchronize zoom levels
+            self.Plot2.getViewBox().setRange(xRange=self.Plot1.getViewBox().viewRange()[0],
+                                             yRange=self.Plot1.getViewBox().viewRange()[1],
+                                             padding=0)
+            self.link_button.setText("Unlink Plots")  # Change button text to "Unlink Plots"
+            is_linked = True  # Update the state
     
     def createButton(self, text, x, y, slot=None, size=(100, 30), font_size=18):
         button = QtWidgets.QPushButton(self.centralwidget)
