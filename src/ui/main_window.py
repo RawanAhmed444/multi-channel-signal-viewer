@@ -222,63 +222,85 @@ class Ui_MainWindow(object):
         # Initialize plots
         self.initPlots()
 
-        MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 790, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1920, 21))
         self.menubar.setObjectName("menubar")
+        self.menubar.setStyleSheet("""
+            QMenuBar {
+            background-color: #353535;  /* Dark gray background */
+            border: 1px solid #636161;  /* White border */
+            }
+            QMenuBar::item {
+            color: #ffffff;             /* White text */
+            font-size: 16px;            /* Font size */
+            font-weight: bold;          /* Bold text */
+            font-family: 'Arial', 'Helvetica', sans-serif; /* Elegant font */
+            }
+            QMenuBar::item:selected {
+            background-color: #403F3F;  /* Lighter gray for hover */
+            }
+            QMenuBar::separator {
+            height: 1px;                /* Height of the separator */
+            background: #636161;        /* Color of the separator */
+            }
+        """)
+
+        # Add menus to the menu bar
+        self.menuSignal = QtWidgets.QMenu(self.menubar)
+        self.menuSignal.setObjectName("menuSignal")
+        self.menuRealTime = QtWidgets.QMenu(self.menubar)
+        self.menuRealTime.setObjectName("menuRealTime")
+        self.menuNonRectangular = QtWidgets.QMenu(self.menubar)
+        self.menuNonRectangular.setObjectName("menuNonRectangular")
+
+        # Add menus to the menubar
+        self.menubar.addAction(self.menuSignal.menuAction())
+        self.menubar.addAction(self.menuRealTime.menuAction())
+        self.menubar.addAction(self.menuNonRectangular.menuAction())
+
+        # Set the menubar to the main window
         MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
-        self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
+
+        # Set the central widget
+        MainWindow.setCentralWidget(self.centralwidget)
+
+        # Set text for menus and actions
+        self.menuSignal.setTitle("Signal")
+        self.menuRealTime.setTitle("Real-Time")
+        self.menuNonRectangular.setTitle("Non-Rectangular")
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-        self.parent = MainWindow
 
 
     def initButtons(self):
-
+        # Button configurations (shifted down by 50 pixels)
         self.Signal1 = self.createButton("Signal", 15, 70)   # Left Signal button with icon
-        self.Link = self.createButton("Link Plots", 140, 290, size=(200, 31))   # Left Link button
-        self.is_linked = False
-        self.Speed1 = self.createSpeedButton(430, 290)       # Left Speed button
-        self.ZoomIn1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 490, 290, )  # Left Zoom In button
-        self.ZoomOut1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 550, 290, ) # Left Zoom Out button
-        self.Snapshot1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 610, 290, )     # Left SS button
-        self.Play_stop1 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 370, 290, )    # Left Toggle P/S button
-
-        # self.GlueButton = self.createButton("Glue", 1,1)
-        self.Signal1.clicked.connect(self.load_first_signal)
-        self.ZoomIn1.clicked.connect(self.zoom_in_1)
-        self.ZoomOut1.clicked.connect(self.zoom_out_1)
-        self.Link.clicked.connect(self.link_plots)
+        self.Link1 = self.createButton("Link To Graph 2", 250, 440, size=(330, 50))   # Left Link button
+        self.Play_stop1 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 610, 440, )    # Left Toggle P/S button
+        self.Speed1 = self.createSpeedButton(690, 440)       # Left Speed button
+        self.ZoomIn1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 770, 440, )  # Left Zoom In button
+        self.ZoomOut1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 850, 440, ) # Left Zoom Out button
+        self.Snapshot1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 930, 440, )     # Left SS button
         
-        self.Signal2 = self.createButton("Signal", 15, 390)   # Left Signal button with icon
-        self.Speed2 = self.createSpeedButton(430, 600)       # Left Speed button for second plot
-        self.ZoomIn2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 490, 600, )  # Left Zoom In button for second plot
-        self.ZoomOut2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 550, 600, ) # Left Zoom Out button
-        self.Snapshot2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 610, 600, )     # Left SS button for second plot
-        self.Play_stop2 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 370, 600, )    # Left Toggle P/S button for second plot
-        self.Signal2.clicked.connect(self.load_second_signal)
-        self.ZoomIn2.clicked.connect(self.zoom_in_2)
-        self.ZoomOut2.clicked.connect(self.zoom_out_2)
+        
+        self.Signal2 = self.createButton("Signal", 15, 530)   # Left Signal button with icon
+        self.Play_stop2 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 610, 900, )    # Left Toggle P/S button for second plot
+        self.Speed2 = self.createSpeedButton(690, 900)       # Left Speed button for second plot
+        self.ZoomIn2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 770, 900, )  # Left Zoom In button for second plot
+        self.ZoomOut2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 850, 900, ) # Left Zoom Out button
+        self.Snapshot2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 930, 900, )     # Left SS button for second plot
+        
         
         # Right side buttons (renamed mirrored buttons)
-        self.Signal3 = self.createButton("Signal", 695, 70)   # Right Signal button
-        self.Speed3 = self.createSpeedButton(1120, 290)       # Right Speed button
-        self.ZoomIn3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 1180, 290, )  # Right Zoom In button
-        self.ZoomOut3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 1240, 290, ) # Right Zoom Out button
-        self.Snapshot3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 1300, 290, )     # Right SS button
-        self.Play_stop3 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 1060, 290, )    # Right Toggle P/S button
         
-        self.Signal4 = self.createButton("Signal", 695, 390)  # Right Signal button for second plot
-        self.Speed4 = self.createSpeedButton(1120, 600)       # Right Speed button for second plot
-        self.ZoomIn4 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 1180, 600, )  # Right Zoom In button for second plot
-        self.ZoomOut4 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 1240, 600, ) # Right Zoom Out button
-        self.Snapshot4 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 1300, 600, )     # Right SS button for second plot
-        self.Play_stop4 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 1060, 600, )    # Right Toggle P/S button for second plot
+        self.ZoomIn3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 1680, 670)  # Right Zoom In button
+        self.Snapshot3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 1760, 670)     # Right SS button
+        self.ZoomOut3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 1840, 670 ) # Right Zoom Out button
+               
+
     
-        self.Report = self.createButton("Report", 605, 645, size=(150, 40), font_size=24)  # Report button
+        self.Report = self.createButton("Report",1350, 800, size=(250, 60), font_size=40)  # Report button
     
     def load_first_signal(self):
         # Open the file dialog for the first signal
@@ -327,13 +349,6 @@ class Ui_MainWindow(object):
         vb = self.Plot3.getViewBox()
         vb.scaleBy((1.2, 1.2))
 
-    def zoom_in_4(self):
-        vb = self.Plot4.getViewBox()
-        vb.scaleBy((0.8, 0.8))
-
-    def zoom_out_4(self):
-        vb = self.Plot4.getViewBox()
-        vb.scaleBy((1.2, 1.2))
 
     def link_plots(self):
         if self.is_linked:
@@ -353,7 +368,7 @@ class Ui_MainWindow(object):
             self.Link.setText("Unlink Plots")  # Change button text to "Unlink Plots"
             self.is_linked = True  # Update the state
     
-    def createButton(self, text, x, y, slot=None, size=(100, 30), font_size=18):
+    def createButton(self, text, x, y, slot=None, size=(150, 50), font_size=30):
         button = QtWidgets.QPushButton(self.centralwidget)
         button.setGeometry(QtCore.QRect(x, y, *size))
         button.setText(text)
@@ -362,7 +377,7 @@ class Ui_MainWindow(object):
             button.clicked.connect(slot)
         return button
 
-    def createButtonWithIcon(self, icon_path, x, y, size=(31, 31)):
+    def createButtonWithIcon(self, icon_path, x, y, size=(50, 50)):
         button = QtWidgets.QPushButton(self.centralwidget)
         button.setGeometry(QtCore.QRect(x, y, *size))
         button.setIcon(QtGui.QIcon(icon_path))
@@ -370,7 +385,7 @@ class Ui_MainWindow(object):
         button.setStyleSheet(self.getButtonStyle())
         return button
     
-    def createSpeedButton(self, x, y, size=(31, 31), default_speed=1):
+    def createSpeedButton(self, x, y, size=(50, 50), default_speed=1):
        button = QtWidgets.QPushButton(f"{default_speed}x", self.centralwidget)
        button.setGeometry(QtCore.QRect(x, y, *size))
        button.setStyleSheet(self.getSpeedButtonStyle())
@@ -379,7 +394,13 @@ class Ui_MainWindow(object):
        button.current_speed_index = button.speeds.index(default_speed)
        return button
 
-    def createToggleButton(self, icon1_path, icon2_path, x, y, size=(31, 31)):
+    def toggleSpeed(self, button):
+       button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
+       new_speed = button.speeds[button.current_speed_index]
+       button.setText(f"{new_speed}x")
+       print(f"Speed set to: {new_speed}x")
+
+    def createToggleButton(self, icon1_path, icon2_path, x, y, size=(50, 50)):
         button = QtWidgets.QPushButton(self.centralwidget)
         button.setGeometry(QtCore.QRect(x, y, *size))
         button.setIcon(QtGui.QIcon(icon1_path))
@@ -402,7 +423,7 @@ class Ui_MainWindow(object):
         button.setText(new_text)
         print(f"Button text set to: {new_text}")
     
-    def getButtonStyle(self, font_size=18):
+    def getButtonStyle(self, font_size=30):
         return (
             "QPushButton {\n"
             "    background-color: #353535;      /* Dark gray background */\n"
@@ -454,7 +475,7 @@ class Ui_MainWindow(object):
     def initPlots(self):
         # Create two plots using PyQtGraph (shifted 50 pixels down)
         self.Plot1 = pg.PlotWidget(self.centralwidget)
-        self.Plot1.setGeometry(QtCore.QRect(120, 70, 541, 201))  # Shifted from 20 to 70
+        self.Plot1.setGeometry(QtCore.QRect(180, 70, 800, 350))  # Shifted from 20 to 70
         self.Plot1.setObjectName("Plot1")
 
         signal1_time_length = len(self.x1)
@@ -473,7 +494,7 @@ class Ui_MainWindow(object):
 
         # Increase the y-coordinate for the second plot
         self.Plot2 = pg.PlotWidget(self.centralwidget)
-        self.Plot2.setGeometry(QtCore.QRect(120, 390, 541, 201))  # Shifted from 340 to 390
+        self.Plot2.setGeometry(QtCore.QRect(180, 530, 800, 350))  # Shifted from 340 to 390
         self.Plot2.setObjectName("Plot2")
 
         # Set x and y limits (adjust as needed)
@@ -486,12 +507,8 @@ class Ui_MainWindow(object):
 
         # Mirrored plots
         self.Plot3 = pg.PlotWidget(self.centralwidget)
-        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  # Right Plot1
+        self.Plot3.setGeometry(QtCore.QRect(1090, 300, 800, 350))  # Right Plot1
         self.Plot3.setObjectName("Plot3")
-
-        self.Plot4 = pg.PlotWidget(self.centralwidget)
-        self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  # Right Plot2
-        self.Plot4.setObjectName("Plot4")
 
         # Example data for plotting
         self.plotData()
