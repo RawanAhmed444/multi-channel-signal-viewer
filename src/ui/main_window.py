@@ -160,10 +160,10 @@ class RightClickPopup(QtWidgets.QMenu):
         if self.source_plot and self.target_plot and self.selected_signal:
             self.move_signal(self.source_plot, self.target_plot, self.source_timer, self.target_timer)
 
-    # def move_signal(self):
-    #     if self.source_plot and self.target_plot and self.selected_signal:
-    #        self.hide() 
-    #        self.parent.move_selected_signal(self.source_plot, self.target_plot, self.source_timer, self.target_timer)
+    def move_signal(self):
+        if self.source_plot and self.target_plot and self.selected_signal:
+            self.hide()
+            move_selected_signal(self.source_plot, self.target_plot, self.source_timer, self.target_timer)
 
     def show_statistics(self):
         if self.selected_signal_data is not None:
@@ -221,7 +221,7 @@ class Ui_MainWindow(object):
 
         # Initialize plots
         self.initPlots()
-
+        
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1920, 21))
         self.menubar.setObjectName("menubar")
@@ -282,7 +282,13 @@ class Ui_MainWindow(object):
         self.ZoomIn1 = self.createButtonWithIcon("data/Images/Zoom in.png", 770, 440, )  # Left Zoom In button
         self.ZoomOut1 = self.createButtonWithIcon("data/Images/Zoom out.png", 850, 440, ) # Left Zoom Out button
         self.Snapshot1 = self.createButtonWithIcon("data/Images/Snapshot.png", 930, 440, )     # Left SS button
-        
+
+      # self.GlueButton = self.createButton("Glue", 1,1)
+        self.Signal1.clicked.connect(self.load_first_signal)
+        self.ZoomIn1.clicked.connect(self.zoom_in_1)
+        self.ZoomOut1.clicked.connect(self.zoom_out_1)
+        self.Link1.clicked.connect(self.link_plots)
+    
         
         self.Signal2 = self.createButton("Signal", 15, 530)   # Left Signal button with icon
         self.Play_stop2 = self.createToggleButton("data/Images/Pause.png", "data/Images/Play.png", 610, 900, )    # Left Toggle P/S button for second plot
@@ -291,13 +297,20 @@ class Ui_MainWindow(object):
         self.ZoomOut2 = self.createButtonWithIcon("data/Images/Zoom out.png", 850, 900, ) # Left Zoom Out button
         self.Snapshot2 = self.createButtonWithIcon("data/Images/Snapshot.png", 930, 900, )     # Left SS button for second plot
         
-        
+              # self.GlueButton = self.createButton("Glue", 1,1)
+        self.Signal2.clicked.connect(self.load_second_signal)
+        self.ZoomIn2.clicked.connect(self.zoom_in_2)
+        self.ZoomOut2.clicked.connect(self.zoom_out_2)
+       
+
         # Right side buttons (renamed mirrored buttons)
         
         self.ZoomIn3 = self.createButtonWithIcon("data/Images/Zoom in.png", 1680, 670)  # Right Zoom In button
-        self.Snapshot3 = self.createButtonWithIcon("data/Images/Snapshot.png", 1760, 670)     # Right SS button
-        self.ZoomOut3 = self.createButtonWithIcon("data/Images/Zoom out.png", 1840, 670 ) # Right Zoom Out button
-               
+        self.ZoomOut3 = self.createButtonWithIcon("data/Images/Zoom out.png", 1760, 670 ) # Right Zoom Out button
+        self.Snapshot3 = self.createButtonWithIcon("data/Images/Snapshot.png", 1840, 670)     # Right SS button   
+        
+        self.ZoomIn3.clicked.connect(self.zoom_in_3)
+        self.ZoomOut3.clicked.connect(self.zoom_out_3)    
 
     
         self.Report = self.createButton("Report",1350, 800, size=(250, 60), font_size=40)  # Report button
