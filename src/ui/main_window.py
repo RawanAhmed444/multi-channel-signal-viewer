@@ -276,7 +276,7 @@ class Ui_MainWindow(object):
     def initButtons(self):
         # Button configurations (shifted down by 50 pixels)
         self.Signal1 = self.createButton("Signal", 15, 70)   # Left Signal button with icon
-        self.Link1 = self.createButton("Link To Graph 2", 250, 440, size=(330, 50))   # Left Link button
+        self.Link1 = self.createButton("Link Plot", 300, 440, size=(280, 50))   # Left Link button
         self.Play_stop1 = self.createToggleButton("data/Images/Pause.png", "data/Images/Play.png", 610, 440, )    # Left Toggle P/S button
         self.Speed1 = self.createSpeedButton(690, 440)       # Left Speed button
         self.ZoomIn1 = self.createButtonWithIcon("data/Images/Zoom in.png", 770, 440, )  # Left Zoom In button
@@ -297,7 +297,7 @@ class Ui_MainWindow(object):
         self.ZoomOut2 = self.createButtonWithIcon("data/Images/Zoom out.png", 850, 900, ) # Left Zoom Out button
         self.Snapshot2 = self.createButtonWithIcon("data/Images/Snapshot.png", 930, 900, )     # Left SS button for second plot
         
-              # self.GlueButton = self.createButton("Glue", 1,1)
+        # self.GlueButton = self.createButton("Glue", 1,1)
         self.Signal2.clicked.connect(self.load_second_signal)
         self.ZoomIn2.clicked.connect(self.zoom_in_2)
         self.ZoomOut2.clicked.connect(self.zoom_out_2)
@@ -570,7 +570,7 @@ class Ui_MainWindow(object):
                     end_index = self.plot_index1
 
                     # Update the plot with the dynamic time window
-                    self.Plot1.plot(self.x1[start_index:end_index], self.y1[start_index:end_index], pen='r', clear=True)
+                    self.Plot1.plot(self.x1[start_index:end_index], self.y1[start_index:end_index], pen='r', clear=False)
 
                     # Set the x-axis limits to match the current time window
                     self.Plot1.setXRange(self.x1[start_index], self.x1[end_index])
@@ -588,7 +588,7 @@ class Ui_MainWindow(object):
                 end_index = self.plot_index2
 
                 # Update the plot with the dynamic time window
-                self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=True)
+                self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=False)
 
                 # Set the x-axis limits to match the current time window
                 self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
