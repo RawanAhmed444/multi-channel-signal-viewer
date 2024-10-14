@@ -50,8 +50,9 @@ class CustomMessageBox(QtWidgets.QMessageBox):
         self.layout().addWidget(label, 0, 0, 1, 2)  # Add the label to the layout
 
 class StatisticsPopup(QtWidgets.QDialog):
-    def __init__(self, parent=None):
-        super(StatisticsPopup, self).__init__(parent)
+    def __init__(self):
+        super(StatisticsPopup, self).__init__()
+        self.popup_menu = RightClickPopup(self)
         self.setStyleSheet("""
             StatisticsPopup {
                 background-color: black;  /* Black background */
@@ -110,7 +111,7 @@ class StatisticsPopup(QtWidgets.QDialog):
         self.statsLabel.setText(selected_signal_stats_text)
 
 class RightClickPopup(QtWidgets.QMenu):
-    def __init__(self, parent=None, source_plot=None, selected_signal=None, selected_signal_data=None, target_plot=None,source_timer=None, target_timer=None, move_signal=None):
+    def __init__(self, parent=None, source_plot=None, selected_signal=None, selected_signal_data=None, target_plot=None, source_timer=None, target_timer=None, move_signal=None):
         super(RightClickPopup, self).__init__(parent)
         self.selected_signal_data = selected_signal_data
         self.source_plot = source_plot
@@ -127,8 +128,8 @@ class RightClickPopup(QtWidgets.QMenu):
             }
             QMenu::item {
             color: #ffffff;             /* White text */
-            padding: 5px 20px;          /* Padding around text */
-            font-size: 16px;            /* Font size */
+            padding: 6px 29px;          /* Decreased padding around text */
+            font-size: 23px;            /* Decreased font size */
             font-weight: bold;          /* Bold text */
             font-family: 'Arial', 'Helvetica', sans-serif; /* Elegant font */
             }
@@ -338,6 +339,8 @@ class Ui_MainWindow(object):
             except Exception as e:
                 print(f"Error loading second file: {e}")
 
+
+
     def zoom_in_1(self):
         vb = self.Plot1.getViewBox()
         vb.scaleBy((0.8, 0.8))
@@ -467,7 +470,7 @@ class Ui_MainWindow(object):
             "    color: #ffffff;                 /* White text */\n"
             "    border: 1px solid #959494;      /* White border */\n"
             "    border-radius: 6px;             /* Rounded corners */\n"
-            "    font-size: 10px;                /* Increased font size */\n"  # Increased size
+            "    font-size: 16px;                /* Increased font size */\n"  # Increased size
             "    font-weight: bold;              /* Bold text */\n"            # Bold text
             "    font-family: 'Georgia', 'Garamond', 'Times New Roman', serif; /* Elegant font */\n"
             "    transition: all 0.3s ease;      /* Smooth transition for hover effect */\n"
@@ -485,6 +488,13 @@ class Ui_MainWindow(object):
             "}\n"
         )
     
+    def plotRightClicked(self, event):
+      if event.button() == QtCore.Qt.RightButton:
+        # Display the right-click popup
+        right_click_popup = RightClickPopup()
+        right_click_popup.exec_()
+
+    
     def initPlots(self):
         # Create two plots using PyQtGraph (shifted 50 pixels down)
         self.Plot1 = pg.PlotWidget(self.centralwidget)
@@ -500,6 +510,9 @@ class Ui_MainWindow(object):
         #Set x and y limits (adjust as needed)
         self.Plot1.setXRange(0, signal1_time_length)  # Set x-axis limits from 0 to 10
         self.Plot1.setYRange(0, signal1_value_length)  # Set y-axis limits from 0 to 100
+        self.Plot1.setObjectName("Plot1")
+        self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+
 
         # Set axis labels
         self.Plot1.setLabel('bottom', "Time (s)")
@@ -509,6 +522,8 @@ class Ui_MainWindow(object):
         self.Plot2 = pg.PlotWidget(self.centralwidget)
         self.Plot2.setGeometry(QtCore.QRect(180, 530, 800, 350))  # Shifted from 340 to 390
         self.Plot2.setObjectName("Plot2")
+        self.Plot2.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+
 
         # Set x and y limits (adjust as needed)
         self.Plot2.setXRange(0, signal2_time_length)  # Set x-axis limits from 0 to 10
@@ -522,6 +537,8 @@ class Ui_MainWindow(object):
         self.Plot3 = pg.PlotWidget(self.centralwidget)
         self.Plot3.setGeometry(QtCore.QRect(1090, 300, 800, 350))  # Right Plot1
         self.Plot3.setObjectName("Plot3")
+        self.Plot3.setObjectName("Plot1")
+        self.Plot3.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
 
         # Example data for plotting
         self.plotData()
