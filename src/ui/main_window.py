@@ -278,15 +278,6 @@ class Ui_MainWindow(object):
        button.current_speed_index = button.speeds.index(default_speed)
        return button
 
-    #function responsible for speed
-    def toggleSpeed(self, button, plot_id):
-       button.speeds = [1.0, 1.5, 2.0, 0.25, 0.5] 
-       button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
-       new_speed = button.speeds[button.current_speed_index]
-       button.setText(f"{new_speed}x")
-       print(f"Speed set to: {new_speed}x")
-       self.parent.timers[plot_id].setInterval(int(150 / new_speed))
-
     def createToggleButton(self, icon1_path, icon2_path, x, y, size=(31, 31)):
         button = QtWidgets.QPushButton(self.centralwidget)
         button.setGeometry(QtCore.QRect(x, y, *size))
@@ -401,6 +392,12 @@ class Ui_MainWindow(object):
         self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  # Right Plot2
         self.Plot4.setObjectName("Plot4")
 
+        # self.timers = [QtCore.QTimer(), QtCore.QTimer()]  # Timers for Plot1 and Plot2
+
+        # # Connect timers to respective plot update methods
+        # self.timers[0].timeout.connect(lambda: self.update_plot(1))
+        # self.timers[1].timeout.connect(lambda: self.update_plot(2))
+
         # Example data for plotting
         self.plotData()
 
@@ -417,7 +414,49 @@ class Ui_MainWindow(object):
         self.timer.timeout.connect(self.update_plot)
         self.timer.start()
 
+    #function responsible for speed
+    # def toggleSpeed(self, button, plot_id):
+    #    print(f"speed for {plot_id}")
+    #    button.speeds = [1.0, 1.5, 2.0, 4.0, 8.0, 0.25, 0.5] 
+    #    button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
+    #    new_speed = button.speeds[button.current_speed_index]
+    #    button.setText(f"{new_speed}x")
+    #    print(f"Speed set to: {new_speed}x")
+    #    self.timers[plot_id -1].setInterval(int(150 / new_speed))
+
+    # def toggleSpeed(self, plot_id):
+    #     current_speed = self.get_current_speed(plot_id)
+    #     new_speed = self.calculate_new_speed(current_speed)
+    #     self.set_plot_speed(plot_id, new_speed)
+    #     print(f"Speed for Plot {plot_id} set to {new_speed}x")
+    def toggleSpeed(self, button, plot_id):
+       print(f"speed for {plot_id}")
+       button.speeds = [1.0, 1.5, 2.0, 4.0, 8.0, 0.25, 0.5] 
+       button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
+       new_speed = button.speeds[button.current_speed_index]
+       button.setText(f"{new_speed}x")
+       print(f"Speed set to: {new_speed}x")
+       self.parent.timers[plot_id].setInterval(int(150 / new_speed))
+
+    def get_current_speed(self, plot_id):
+        # Retrieve the current speed value from the respective speed button
+        speed_button = self.Speed1 if plot_id == 1 else self.Speed2
+        return float(speed_button.text()[:-1])  # Assuming the button displays speed like "1.5x"
+
+    # def calculate_new_speed(self, current_speed):
+    #     # Cycle through speed values: 0.25x, 0.5x, 1.5x, 2x
+    #     speed_cycle = [0.25, 0.5, 1.5, 2.0, 1.0]
+    #     current_index = speed_cycle.index(current_speed)
+    #     new_index = (current_index + 1) % len(speed_cycle)
+    #     return speed_cycle[new_index]
+
+    # def set_plot_speed(self, plot_id, speed):
+    #     # Set the speed for the corresponding plot's timer
+    #     timer = self.timers[plot_id]
+    #     timer.setInterval(150 / speed)  # Adjusting interval based on speed
+
     def update_plot(self, plot_id):
+        print(f"updating plot{plot_id}")
         # Update the plot with new data points
         if self.play_stop_signals.is_playing(plot_id):  # For Plot1
             if plot_id == 1:
@@ -425,6 +464,9 @@ class Ui_MainWindow(object):
                     next_x = self.x1[self.plot_index]
                     next_y = self.y1[self.plot_index]
                     self.plot_index += 1
+
+                    if not self.timers[0].isActive():
+                        self.timers[0].start()
 
                     # Calculate the start and end indices for the dynamic time window
                     start_index = max(self.plot_index - 200, 0)  # Adjust the window size as needed
@@ -438,23 +480,26 @@ class Ui_MainWindow(object):
 
                     plt.pause(0.01)  # Adjust the pause time for animation speed
  
-        if plot_id == 2 and self.play_stop_signals.is_playing(plot_id):     
-            if self.plot_index < len(self.x2):
-                next_x = self.x2[self.plot_index]
-                next_y = self.y2[self.plot_index]
-                self.plot_index += 1
-                
-                # Calculate the start and end indices for the dynamic time window
-                start_index = max(self.plot_index - 200, 0)  # Adjust the window size as needed
-                end_index = self.plot_index
+            if plot_id == 2:     
+                if self.plot_index < len(self.x2):
+                    next_x = self.x2[self.plot_index]
+                    next_y = self.y2[self.plot_index]
+                    self.plot_index += 1
 
-                # Update the plot with the dynamic time window
-                self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=True)
+                    if not self.timers[1].isActive():
+                        self.timers[1].start()
+                    
+                    # Calculate the start and end indices for the dynamic time window
+                    start_index = max(self.plot_index - 200, 0)  # Adjust the window size as needed
+                    end_index = self.plot_index
 
-                # Set the x-axis limits to match the current time window
-                self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
+                    # Update the plot with the dynamic time window
+                    self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=True)
 
-                plt.pause(0.01)  # Adjust the pause time for animation speed
+                    # Set the x-axis limits to match the current time window
+                    self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
+
+                    plt.pause(0.01)  # Adjust the pause time for animation speed
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate

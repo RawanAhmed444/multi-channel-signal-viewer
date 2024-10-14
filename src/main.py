@@ -15,8 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from logic.play_stop import PlayStopSignals 
 from logic.move_signals import selected_signal
-
-
+from functools import partial
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -33,11 +32,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timers = {
             1: QtCore.QTimer(),
             2: QtCore.QTimer()
-        }
+        }   
 
         for plot_id, timer in self.timers.items():
             timer.setInterval(150)
-            timer.timeout.connect(lambda plot_id=plot_id: self.ui.update_plot(plot_id))
+            timer.timeout.connect(partial(self.ui.update_plot, plot_id))
 
         # Connect snapshot buttons to functions
         self.ui.Snapshot1.clicked.connect(lambda: self.take_snapshot(self.ui.Plot1, "Plot1"))
@@ -49,7 +48,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.Play_stop1.clicked.connect(lambda: self.toggle_play_stop(1))
         self.ui.Play_stop2.clicked.connect(lambda: self.toggle_play_stop(2))
 
-        self.update_timers()
+        
+        # self.update_timers()
 
         #connect report button to generate the pdf
         self.ui.Report.clicked.connect(self.generate_pdf)
@@ -63,6 +63,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.selected_signal = None
         self.selected_signal_timer = None
+
+    # def update_plot(self,plot_id):
+    #     self.ui.update_plot(plot_id)
 
     def on_plot_click(self, event, plot_widget):
         items = plot_widget.listDataItems()
@@ -109,7 +112,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.play_stop_signals.start_signal(plot_id)
             self.control_plot(plot_id, start=True) 
     
-    # function responsible for play_pause and speed
+    # function responsible for play_pause 
     def control_plot(self, plot_id, start):
         if start:
             self.timers[plot_id].start()
@@ -119,10 +122,10 @@ class MainWindow(QtWidgets.QMainWindow):
             print(f"Plot {plot_id} stopped.")
 
     # function responsible for play_pause and speed
-    def update_timers(self):
-        for plot_id in self.timers:
-            if self.play_stop_signals.is_playing(plot_id):
-                self.timers[plot_id].start()
+    # def update_timers(self):
+    #     for plot_id in self.timers:
+    #         if self.play_stop_signals.is_playing(plot_id):
+    #             self.timers[plot_id].start()
 
     def move_signals(self, source_plot, target_plot, source_timer, target_timer):
         move_selected_signal(source_plot, target_plot, source_timer, target_timer)
