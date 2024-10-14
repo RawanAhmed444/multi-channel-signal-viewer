@@ -277,26 +277,26 @@ class Ui_MainWindow(object):
         # Button configurations (shifted down by 50 pixels)
         self.Signal1 = self.createButton("Signal", 15, 70)   # Left Signal button with icon
         self.Link1 = self.createButton("Link To Graph 2", 250, 440, size=(330, 50))   # Left Link button
-        self.Play_stop1 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 610, 440, )    # Left Toggle P/S button
+        self.Play_stop1 = self.createToggleButton("src/data/Images/Pause.png", "src/data/Images/Play.png", 610, 440, )    # Left Toggle P/S button
         self.Speed1 = self.createSpeedButton(690, 440)       # Left Speed button
-        self.ZoomIn1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 770, 440, )  # Left Zoom In button
-        self.ZoomOut1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 850, 440, ) # Left Zoom Out button
-        self.Snapshot1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 930, 440, )     # Left SS button
+        self.ZoomIn1 = self.createButtonWithIcon("src/data/Images/Zoom in.png", 770, 440, )  # Left Zoom In button
+        self.ZoomOut1 = self.createButtonWithIcon("src/data/Images/Zoom out.png", 850, 440, ) # Left Zoom Out button
+        self.Snapshot1 = self.createButtonWithIcon("src/data/Images/Snapshot.png", 930, 440, )     # Left SS button
         
         
         self.Signal2 = self.createButton("Signal", 15, 530)   # Left Signal button with icon
-        self.Play_stop2 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 610, 900, )    # Left Toggle P/S button for second plot
+        self.Play_stop2 = self.createToggleButton("src/data/Images/Pause.png", "src/data/Images/Play.png", 610, 900, )    # Left Toggle P/S button for second plot
         self.Speed2 = self.createSpeedButton(690, 900)       # Left Speed button for second plot
-        self.ZoomIn2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 770, 900, )  # Left Zoom In button for second plot
-        self.ZoomOut2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 850, 900, ) # Left Zoom Out button
-        self.Snapshot2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 930, 900, )     # Left SS button for second plot
+        self.ZoomIn2 = self.createButtonWithIcon("src/data/Images/Zoom in.png", 770, 900, )  # Left Zoom In button for second plot
+        self.ZoomOut2 = self.createButtonWithIcon("src/data/Images/Zoom out.png", 850, 900, ) # Left Zoom Out button
+        self.Snapshot2 = self.createButtonWithIcon("src/data/Images/Snapshot.png", 930, 900, )     # Left SS button for second plot
         
         
         # Right side buttons (renamed mirrored buttons)
         
-        self.ZoomIn3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 1680, 670)  # Right Zoom In button
-        self.Snapshot3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 1760, 670)     # Right SS button
-        self.ZoomOut3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 1840, 670 ) # Right Zoom Out button
+        self.ZoomIn3 = self.createButtonWithIcon("src/data/Images/Zoom in.png", 1680, 670)  # Right Zoom In button
+        self.Snapshot3 = self.createButtonWithIcon("src/data/Images/Snapshot.png", 1760, 670)     # Right SS button
+        self.ZoomOut3 = self.createButtonWithIcon("src/data/Images/Zoom out.png", 1840, 670 ) # Right Zoom Out button
                
 
     
