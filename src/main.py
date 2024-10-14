@@ -15,7 +15,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from logic.play_stop import PlayStopSignals 
 from logic.move_signals import selected_signal
-from functools import partial
+
+
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -32,11 +33,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timers = {
             1: QtCore.QTimer(),
             2: QtCore.QTimer()
-        }   
+        }
 
         for plot_id, timer in self.timers.items():
             timer.setInterval(150)
-            timer.timeout.connect(partial(self.ui.update_plot, plot_id))
+            timer.timeout.connect(lambda plot_id=plot_id: self.ui.update_plot(plot_id))
 
         # Connect snapshot buttons to functions
         self.ui.Snapshot1.clicked.connect(lambda: self.take_snapshot(self.ui.Plot1, "Plot1"))
@@ -48,8 +49,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.Play_stop1.clicked.connect(lambda: self.toggle_play_stop(1))
         self.ui.Play_stop2.clicked.connect(lambda: self.toggle_play_stop(2))
 
-        
-        # self.update_timers()
+        self.update_timers()
 
         #connect report button to generate the pdf
         self.ui.Report.clicked.connect(self.generate_pdf)
@@ -64,32 +64,38 @@ class MainWindow(QtWidgets.QMainWindow):
         self.selected_signal = None
         self.selected_signal_timer = None
 
-    # def update_plot(self,plot_id):
-    #     self.ui.update_plot(plot_id)
-
     def on_plot_click(self, event, plot_widget):
-        items = plot_widget.listDataItems()
-        if items:
-            # select a signal from the many signals being displayed on the plot
-            for signal in items:
-                select_signal(plot_widget, signal)
+        global selected_signal
+        if event.button() == QtCore.Qt.LeftButton:
 
-            x_data, y_data = self.get_plot_data(plot_widget)
-            source_plot = self.ui.Plot1 if selected_signal in self.ui.Plot1.listDataItems() else self.ui.Plot2
+            items = plot_widget.listDataItems()
+            if items:
+                # select a signal from the many signals being displayed on the plot
+                for signal in items:
+                    select_signal(plot_widget, signal)
+                    print(f"Selected signal: {signal}") 
+                    break   # Ensure we only select the first one clicked
 
-        if event.button() == QtCore.Qt.RightButton:
-
+                x_data, y_data = self.get_plot_data(plot_widget)
+                self.selected_signal_data = y_data  # Store the selected signal data for use in the context menu
+            else:
+                print("No signals available in the plot.")  # Debugging line
+                   
+        elif event.button() == QtCore.Qt.RightButton:
+            source_plot = plot_widget
+            print(f"source plot: {source_plot}")
             target_plot = self.ui.Plot2 if source_plot == self.ui.Plot1 else self.ui.Plot1
 
             #pass selected signal data to the context menu
             context_menu = RightClickPopup(
             parent=self,
-            selected_signal_data=y_data,
+            selected_signal = selected_signal,
+            selected_signal_data=self.selected_signal_data,
             source_plot=source_plot,
             target_plot=target_plot,
             source_timer=self.timers[1] if source_plot == self.ui.Plot1 else self.timers[2],
             target_timer=self.timers[2] if target_plot == self.ui.Plot2 else self.timers[1],
-            move_signal=self.move_signals
+            move_signal=self.move_signal
         )
             context_menu.exec_(QPoint(int(event.screenPos().x()), int(event.screenPos().y()))) #show the menu at the mouse position 
 
@@ -112,7 +118,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.play_stop_signals.start_signal(plot_id)
             self.control_plot(plot_id, start=True) 
     
-    # function responsible for play_pause 
+    # function responsible for play_pause and speed
     def control_plot(self, plot_id, start):
         if start:
             self.timers[plot_id].start()
@@ -122,12 +128,13 @@ class MainWindow(QtWidgets.QMainWindow):
             print(f"Plot {plot_id} stopped.")
 
     # function responsible for play_pause and speed
-    # def update_timers(self):
-    #     for plot_id in self.timers:
-    #         if self.play_stop_signals.is_playing(plot_id):
-    #             self.timers[plot_id].start()
+    def update_timers(self):
+        for plot_id in self.timers:
+            if self.play_stop_signals.is_playing(plot_id):
+                self.timers[plot_id].start()
 
-    def move_signals(self, source_plot, target_plot, source_timer, target_timer):
+    def move_signal(self, source_plot, target_plot, source_timer, target_timer):
+        print("you are now in main.py")
         move_selected_signal(source_plot, target_plot, source_timer, target_timer)
 
     def get_plot_data(self, plot_widget):
@@ -136,9 +143,10 @@ class MainWindow(QtWidgets.QMainWindow):
         x_data = None
         print("Number of items in plot:", len(items))  # Debugging line
 
-        for signal in items: 
-            x_data, y_data = signal.getData()
-            full_y_data.extend(y_data)
+        if items:
+            for signal in items: 
+                x_data, y_data = signal.getData()
+                full_y_data.extend(y_data)
 
         return x_data, full_y_data
         
@@ -158,4 +166,3 @@ if __name__ == "__main__":
     mainWindow = MainWindow()
     mainWindow.show()
     sys.exit(app.exec_())
-
