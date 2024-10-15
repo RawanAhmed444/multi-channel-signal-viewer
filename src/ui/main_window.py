@@ -167,7 +167,6 @@ class RightClickPopup(QtWidgets.QMenu):
             move_selected_signal(self.source_plot, self.target_plot, self.source_timer, self.target_timer)
 
     def show_statistics(self):
-        if self.selected_signal_data is not None:
             self.hide()
             selected_signal_stats = calculate_statistics(self.selected_signal_data)
             stats_popup = StatisticsPopup()
