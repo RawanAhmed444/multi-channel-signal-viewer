@@ -50,9 +50,8 @@ class CustomMessageBox(QtWidgets.QMessageBox):
         self.layout().addWidget(label, 0, 0, 1, 2)  # Add the label to the layout
 
 class StatisticsPopup(QtWidgets.QDialog):
-    def __init__(self):
-        super(StatisticsPopup, self).__init__()
-        self.popup_menu = RightClickPopup(self)
+    def __init__(self, parent=None):
+        super(StatisticsPopup, self).__init__(parent)
         self.setStyleSheet("""
             StatisticsPopup {
                 background-color: black;  /* Black background */
@@ -111,7 +110,7 @@ class StatisticsPopup(QtWidgets.QDialog):
         self.statsLabel.setText(selected_signal_stats_text)
 
 class RightClickPopup(QtWidgets.QMenu):
-    def __init__(self, parent=None, source_plot=None, selected_signal=None, selected_signal_data=None, target_plot=None, source_timer=None, target_timer=None, move_signal=None):
+    def __init__(self, parent=None, source_plot=None, selected_signal=None, selected_signal_data=None, target_plot=None,source_timer=None, target_timer=None, move_signal=None):
         super(RightClickPopup, self).__init__(parent)
         self.selected_signal_data = selected_signal_data
         self.source_plot = source_plot
@@ -128,8 +127,8 @@ class RightClickPopup(QtWidgets.QMenu):
             }
             QMenu::item {
             color: #ffffff;             /* White text */
-            padding: 6px 29px;          /* Decreased padding around text */
-            font-size: 23px;            /* Decreased font size */
+            padding: 5px 20px;          /* Padding around text */
+            font-size: 16px;            /* Font size */
             font-weight: bold;          /* Bold text */
             font-family: 'Arial', 'Helvetica', sans-serif; /* Elegant font */
             }
@@ -161,12 +160,13 @@ class RightClickPopup(QtWidgets.QMenu):
         if self.source_plot and self.target_plot and self.selected_signal:
             self.move_signal(self.source_plot, self.target_plot, self.source_timer, self.target_timer)
 
-    def move_signal(self):
-        if self.source_plot and self.target_plot and self.selected_signal:
-            self.hide()
-            move_selected_signal(self.source_plot, self.target_plot, self.source_timer, self.target_timer)
+    # def move_signal(self):
+    #     if self.source_plot and self.target_plot and self.selected_signal:
+    #        self.hide() 
+    #        self.parent.move_selected_signal(self.source_plot, self.target_plot, self.source_timer, self.target_timer)
 
     def show_statistics(self):
+        if self.selected_signal_data is not None:
             self.hide()
             selected_signal_stats = calculate_statistics(self.selected_signal_data)
             stats_popup = StatisticsPopup()
@@ -179,7 +179,6 @@ class RightClickPopup(QtWidgets.QMenu):
         super(RightClickPopup, self).showEvent(event)
 
 class Ui_MainWindow(object):
-
     def convert_signal_values_to_numeric(self, filename):
         signal_data = load_signal_from_file(filename)
         df = pd.DataFrame(signal_data)
@@ -221,99 +220,66 @@ class Ui_MainWindow(object):
 
         # Initialize plots
         self.initPlots()
-        
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1920, 21))
-        self.menubar.setObjectName("menubar")
-        self.menubar.setStyleSheet("""
-            QMenuBar {
-            background-color: #353535;  /* Dark gray background */
-            border: 1px solid #636161;  /* White border */
-            }
-            QMenuBar::item {
-            color: #ffffff;             /* White text */
-            font-size: 16px;            /* Font size */
-            font-weight: bold;          /* Bold text */
-            font-family: 'Arial', 'Helvetica', sans-serif; /* Elegant font */
-            }
-            QMenuBar::item:selected {
-            background-color: #403F3F;  /* Lighter gray for hover */
-            }
-            QMenuBar::separator {
-            height: 1px;                /* Height of the separator */
-            background: #636161;        /* Color of the separator */
-            }
-        """)
 
-        # Add menus to the menu bar
-        self.menuSignal = QtWidgets.QMenu(self.menubar)
-        self.menuSignal.setObjectName("menuSignal")
-        self.menuRealTime = QtWidgets.QMenu(self.menubar)
-        self.menuRealTime.setObjectName("menuRealTime")
-        self.menuNonRectangular = QtWidgets.QMenu(self.menubar)
-        self.menuNonRectangular.setObjectName("menuNonRectangular")
-
-        # Add menus to the menubar
-        self.menubar.addAction(self.menuSignal.menuAction())
-        self.menubar.addAction(self.menuRealTime.menuAction())
-        self.menubar.addAction(self.menuNonRectangular.menuAction())
-
-        # Set the menubar to the main window
-        MainWindow.setMenuBar(self.menubar)
-
-        # Set the central widget
         MainWindow.setCentralWidget(self.centralwidget)
-
-        # Set text for menus and actions
-        self.menuSignal.setTitle("Signal")
-        self.menuRealTime.setTitle("Real-Time")
-        self.menuNonRectangular.setTitle("Non-Rectangular")
+        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 790, 21))
+        self.menubar.setObjectName("menubar")
+        MainWindow.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        self.parent = MainWindow
 
 
     def initButtons(self):
-        # Button configurations (shifted down by 50 pixels)
-        self.Signal1 = self.createButton("Signal", 15, 70)   # Left Signal button with icon
-        self.Link1 = self.createButton("Link Plot", 300, 440, size=(280, 50))   # Left Link button
-        self.Play_stop1 = self.createToggleButton("data/Images/Pause.png", "data/Images/Play.png", 610, 440, )    # Left Toggle P/S button
-        self.Speed1 = self.createSpeedButton(690, 440)       # Left Speed button
-        self.ZoomIn1 = self.createButtonWithIcon("data/Images/Zoom in.png", 770, 440, )  # Left Zoom In button
-        self.ZoomOut1 = self.createButtonWithIcon("data/Images/Zoom out.png", 850, 440, ) # Left Zoom Out button
-        self.Snapshot1 = self.createButtonWithIcon("data/Images/Snapshot.png", 930, 440, )     # Left SS button
 
-      # self.GlueButton = self.createButton("Glue", 1,1)
-        self.Signal1.clicked.connect(self.load_first_signal)
+        self.Signal1 = self.createButton("Signal", 15, 70)   # Left Signal button with icon
+        self.Link1 = self.createButton("Link To Graph 2", 140, 290, size=(200, 31))   # Left Link button
+        self.Speed1 = self.createSpeedButton(430, 290)       # Left Speed button
+        self.ZoomIn1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 490, 290, )  # Left Zoom In button
+        self.ZoomOut1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 550, 290, ) # Left Zoom Out button
+        self.Snapshot1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 610, 290, )     # Left SS button
+        self.Play_stop1 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 370, 290, )    # Left Toggle P/S button
+
+        # self.GlueButton = self.createButton("Glue", 1,1)
+        self.Load1Button = self.createButton("Graph1", 1,1)
+        self.Load2Button = self.createButton("Graph2", 100,1)
+        self.Load1Button.clicked.connect(self.load_first_signal)
+        self.Load2Button.clicked.connect(self.load_second_signal)
         self.ZoomIn1.clicked.connect(self.zoom_in_1)
         self.ZoomOut1.clicked.connect(self.zoom_out_1)
         self.Link1.clicked.connect(self.link_plots)
-    
         
-        self.Signal2 = self.createButton("Signal", 15, 530)   # Left Signal button with icon
-        self.Play_stop2 = self.createToggleButton("data/Images/Pause.png", "data/Images/Play.png", 610, 900, )    # Left Toggle P/S button for second plot
-        self.Speed2 = self.createSpeedButton(690, 900)       # Left Speed button for second plot
-        self.ZoomIn2 = self.createButtonWithIcon("data/Images/Zoom in.png", 770, 900, )  # Left Zoom In button for second plot
-        self.ZoomOut2 = self.createButtonWithIcon("data/Images/Zoom out.png", 850, 900, ) # Left Zoom Out button
-        self.Snapshot2 = self.createButtonWithIcon("data/Images/Snapshot.png", 930, 900, )     # Left SS button for second plot
-        
-        # self.GlueButton = self.createButton("Glue", 1,1)
-        self.Signal2.clicked.connect(self.load_second_signal)
+        self.Signal2 = self.createButton("Signal", 15, 390)   # Left Signal button with icon
+        self.Speed2 = self.createSpeedButton(430, 600)       # Left Speed button for second plot
+        self.ZoomIn2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 490, 600, )  # Left Zoom In button for second plot
+        self.ZoomOut2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 550, 600, ) # Left Zoom Out button
+        self.Snapshot2 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 610, 600, )     # Left SS button for second plot
+        self.Play_stop2 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 370, 600, )    # Left Toggle P/S button for second plot
+
         self.ZoomIn2.clicked.connect(self.zoom_in_2)
         self.ZoomOut2.clicked.connect(self.zoom_out_2)
-       
-
+        
         # Right side buttons (renamed mirrored buttons)
+        self.Signal3 = self.createButton("Signal", 695, 70)   # Right Signal button
+        self.Speed3 = self.createSpeedButton(1120, 290)       # Right Speed button
+        self.ZoomIn3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 1180, 290, )  # Right Zoom In button
+        self.ZoomOut3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 1240, 290, ) # Right Zoom Out button
+        self.Snapshot3 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 1300, 290, )     # Right SS button
+        self.Play_stop3 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 1060, 290, )    # Right Toggle P/S button
         
-        self.ZoomIn3 = self.createButtonWithIcon("data/Images/Zoom in.png", 1680, 670)  # Right Zoom In button
-        self.ZoomOut3 = self.createButtonWithIcon("data/Images/Zoom out.png", 1760, 670 ) # Right Zoom Out button
-        self.Snapshot3 = self.createButtonWithIcon("data/Images/Snapshot.png", 1840, 670)     # Right SS button   
-        
-        self.ZoomIn3.clicked.connect(self.zoom_in_3)
-        self.ZoomOut3.clicked.connect(self.zoom_out_3)    
-
+        self.Signal4 = self.createButton("Signal", 695, 390)  # Right Signal button for second plot
+        self.Speed4 = self.createSpeedButton(1120, 600)       # Right Speed button for second plot
+        self.ZoomIn4 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom in.png", 1180, 600, )  # Right Zoom In button for second plot
+        self.ZoomOut4 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Zoom out.png", 1240, 600, ) # Right Zoom Out button
+        self.Snapshot4 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 1300, 600, )     # Right SS button for second plot
+        self.Play_stop4 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 1060, 600, )    # Right Toggle P/S button for second plot
     
-        self.Report = self.createButton("Report",1350, 800, size=(250, 60), font_size=40)  # Report button
+        self.Report = self.createButton("Report", 605, 645, size=(150, 40), font_size=24)  # Report button
     
     def load_first_signal(self):
         # Open the file dialog for the first signal
@@ -337,8 +303,6 @@ class Ui_MainWindow(object):
                 print(f"Loaded second signal from {filename}")
             except Exception as e:
                 print(f"Error loading second file: {e}")
-
-
 
     def zoom_in_1(self):
         vb = self.Plot1.getViewBox()
@@ -364,26 +328,35 @@ class Ui_MainWindow(object):
         vb = self.Plot3.getViewBox()
         vb.scaleBy((1.2, 1.2))
 
+    def zoom_in_4(self):
+        vb = self.Plot4.getViewBox()
+        vb.scaleBy((0.8, 0.8))
+
+    def zoom_out_4(self):
+        vb = self.Plot4.getViewBox()
+        vb.scaleBy((1.2, 1.2))
 
     def link_plots(self):
-        if self.is_linked:
+        global is_linked
+        is_linked = False
+        if is_linked:
             # Unlink the plots
             self.Plot2.setXLink(None)
             self.Plot2.setYLink(None)
-            self.Link.setText("Link Plots")  # Change button text to "Link Plots"
-            self.is_linked = False  # Update the state
+            self.link_button.setText("Link Plots")  # Change button text to "Link Plots"
+            is_linked = False  # Update the state
         else:
             # Link the plots and set the same zoom
             self.Plot2.setXLink(self.Plot1)
-            self.Plot2.setYLink(self.Plot1)
+            self.Plot2.setYLink(self.Plot1)  # Uncomment if you want to link y-axis as well
             # Synchronize zoom levels
             self.Plot2.getViewBox().setRange(xRange=self.Plot1.getViewBox().viewRange()[0],
                                              yRange=self.Plot1.getViewBox().viewRange()[1],
                                              padding=0)
-            self.Link.setText("Unlink Plots")  # Change button text to "Unlink Plots"
-            self.is_linked = True  # Update the state
+            self.link_button.setText("Unlink Plots")  # Change button text to "Unlink Plots"
+            is_linked = True  # Update the state
     
-    def createButton(self, text, x, y, slot=None, size=(150, 50), font_size=30):
+    def createButton(self, text, x, y, slot=None, size=(100, 30), font_size=18):
         button = QtWidgets.QPushButton(self.centralwidget)
         button.setGeometry(QtCore.QRect(x, y, *size))
         button.setText(text)
@@ -392,7 +365,7 @@ class Ui_MainWindow(object):
             button.clicked.connect(slot)
         return button
 
-    def createButtonWithIcon(self, icon_path, x, y, size=(50, 50)):
+    def createButtonWithIcon(self, icon_path, x, y, size=(31, 31)):
         button = QtWidgets.QPushButton(self.centralwidget)
         button.setGeometry(QtCore.QRect(x, y, *size))
         button.setIcon(QtGui.QIcon(icon_path))
@@ -400,7 +373,7 @@ class Ui_MainWindow(object):
         button.setStyleSheet(self.getButtonStyle())
         return button
     
-    def createSpeedButton(self, x, y, size=(50, 50), default_speed=1):
+    def createSpeedButton(self, x, y, size=(31, 31), default_speed=1):
        button = QtWidgets.QPushButton(f"{default_speed}x", self.centralwidget)
        button.setGeometry(QtCore.QRect(x, y, *size))
        button.setStyleSheet(self.getSpeedButtonStyle())
@@ -409,13 +382,7 @@ class Ui_MainWindow(object):
        button.current_speed_index = button.speeds.index(default_speed)
        return button
 
-    def toggleSpeed(self, button):
-       button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
-       new_speed = button.speeds[button.current_speed_index]
-       button.setText(f"{new_speed}x")
-       print(f"Speed set to: {new_speed}x")
-
-    def createToggleButton(self, icon1_path, icon2_path, x, y, size=(50, 50)):
+    def createToggleButton(self, icon1_path, icon2_path, x, y, size=(31, 31)):
         button = QtWidgets.QPushButton(self.centralwidget)
         button.setGeometry(QtCore.QRect(x, y, *size))
         button.setIcon(QtGui.QIcon(icon1_path))
@@ -438,7 +405,7 @@ class Ui_MainWindow(object):
         button.setText(new_text)
         print(f"Button text set to: {new_text}")
     
-    def getButtonStyle(self, font_size=30):
+    def getButtonStyle(self, font_size=18):
         return (
             "QPushButton {\n"
             "    background-color: #353535;      /* Dark gray background */\n"
@@ -469,7 +436,7 @@ class Ui_MainWindow(object):
             "    color: #ffffff;                 /* White text */\n"
             "    border: 1px solid #959494;      /* White border */\n"
             "    border-radius: 6px;             /* Rounded corners */\n"
-            "    font-size: 16px;                /* Increased font size */\n"  # Increased size
+            "    font-size: 10px;                /* Increased font size */\n"  # Increased size
             "    font-weight: bold;              /* Bold text */\n"            # Bold text
             "    font-family: 'Georgia', 'Garamond', 'Times New Roman', serif; /* Elegant font */\n"
             "    transition: all 0.3s ease;      /* Smooth transition for hover effect */\n"
@@ -487,17 +454,10 @@ class Ui_MainWindow(object):
             "}\n"
         )
     
-    def plotRightClicked(self, event):
-      if event.button() == QtCore.Qt.RightButton:
-        # Display the right-click popup
-        right_click_popup = RightClickPopup()
-        right_click_popup.exec_()
-
-    
     def initPlots(self):
         # Create two plots using PyQtGraph (shifted 50 pixels down)
         self.Plot1 = pg.PlotWidget(self.centralwidget)
-        self.Plot1.setGeometry(QtCore.QRect(180, 70, 800, 350))  # Shifted from 20 to 70
+        self.Plot1.setGeometry(QtCore.QRect(120, 70, 541, 201))  # Shifted from 20 to 70
         self.Plot1.setObjectName("Plot1")
 
         signal1_time_length = len(self.x1)
@@ -509,9 +469,6 @@ class Ui_MainWindow(object):
         #Set x and y limits (adjust as needed)
         self.Plot1.setXRange(0, signal1_time_length)  # Set x-axis limits from 0 to 10
         self.Plot1.setYRange(0, signal1_value_length)  # Set y-axis limits from 0 to 100
-        self.Plot1.setObjectName("Plot1")
-        self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
-
 
         # Set axis labels
         self.Plot1.setLabel('bottom', "Time (s)")
@@ -519,10 +476,8 @@ class Ui_MainWindow(object):
 
         # Increase the y-coordinate for the second plot
         self.Plot2 = pg.PlotWidget(self.centralwidget)
-        self.Plot2.setGeometry(QtCore.QRect(180, 530, 800, 350))  # Shifted from 340 to 390
+        self.Plot2.setGeometry(QtCore.QRect(120, 390, 541, 201))  # Shifted from 340 to 390
         self.Plot2.setObjectName("Plot2")
-        self.Plot2.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
-
 
         # Set x and y limits (adjust as needed)
         self.Plot2.setXRange(0, signal2_time_length)  # Set x-axis limits from 0 to 10
@@ -534,10 +489,12 @@ class Ui_MainWindow(object):
 
         # Mirrored plots
         self.Plot3 = pg.PlotWidget(self.centralwidget)
-        self.Plot3.setGeometry(QtCore.QRect(1090, 300, 800, 350))  # Right Plot1
+        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  # Right Plot1
         self.Plot3.setObjectName("Plot3")
-        self.Plot3.setObjectName("Plot1")
-        self.Plot3.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+
+        self.Plot4 = pg.PlotWidget(self.centralwidget)
+        self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  # Right Plot2
+        self.Plot4.setObjectName("Plot4")
 
         # Example data for plotting
         self.plotData()
@@ -586,7 +543,7 @@ class Ui_MainWindow(object):
                     end_index = self.plot_index1
 
                     # Update the plot with the dynamic time window
-                    self.Plot1.plot(self.x1[start_index:end_index], self.y1[start_index:end_index], pen='r', clear=False)
+                    self.Plot1.plot(self.x1[start_index:end_index], self.y1[start_index:end_index], pen='r', clear=True)
 
                     # Set the x-axis limits to match the current time window
                     self.Plot1.setXRange(self.x1[start_index], self.x1[end_index])
@@ -604,7 +561,7 @@ class Ui_MainWindow(object):
                 end_index = self.plot_index2
 
                 # Update the plot with the dynamic time window
-                self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=False)
+                self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=True)
 
                 # Set the x-axis limits to match the current time window
                 self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])

@@ -14,7 +14,7 @@ from logic.signal_processing import load_signal_from_file
 import pandas as pd
 import matplotlib.pyplot as plt
 from logic.play_stop import PlayStopSignals 
-from logic.move_signals import selected_signal
+
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
