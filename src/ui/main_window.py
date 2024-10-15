@@ -347,92 +347,113 @@ class Ui_MainWindow(object):
     #     right_click_popup.exec_()
 
     def initPlots(self):
-        # Create two plots using PyQtGraph (shifted 50 pixels down)
+        """
+        Initializes four `pyqtgraph.PlotWidget` objects for different signal types.
+
+        - Plot1: Normal Signal (red pen)
+        - Plot2: Abnormal Signal (blue pen)
+        - Plot3: Real-Time Signal 
+        - Plot4: Non-Rectangular Signal (polar plot, yellow pen)
+
+        Sets geometry (position and size) and labels for each plot.
+        """
+        
+        # Initiate graph 1 for normal signal
         self.Plot1 = pg.PlotWidget(self.centralwidget)
-        self.Plot1.setGeometry(QtCore.QRect(120, 70, 541, 201))  # Shifted from 20 to 70
+        self.Plot1.setGeometry(QtCore.QRect(120, 70, 541, 201))  
         self.Plot1.setObjectName("Plot1")
         # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
-
         signal1_time_length = len(self.x1)
         signal1_value_length = len(self.y1)
-        
-        #Set x and y limits (adjust as needed)
-        self.Plot1.setXRange(0, signal1_time_length)  # Set x-axis limits from 0 to 10
-        self.Plot1.setYRange(0, signal1_value_length)  # Set y-axis limits from 0 to 100
-
+        #Set x and y limits 
+        self.Plot1.setXRange(0, signal1_time_length)  
+        self.Plot1.setYRange(0, signal1_value_length) 
         # Set axis labels
         self.Plot1.setLabel('bottom', "Time (s)")
         self.Plot1.setLabel('left', "Normal Signal")
 
-        # Increase the y-coordinate for the second plot
+        # Initiate graph 2 for abnormal signal
         self.Plot2 = pg.PlotWidget(self.centralwidget)
-        self.Plot2.setGeometry(QtCore.QRect(120, 390, 541, 201))  # Shifted from 340 to 390
+        self.Plot2.setGeometry(QtCore.QRect(120, 390, 541, 201))  
         self.Plot2.setObjectName("Plot2")
         # self.Plot2.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
-        
         signal2_time_length = len(self.x2)
         signal2_value_length = len(self.y2)
-
-        # Set x and y limits (adjust as needed)
-        self.Plot2.setXRange(0, signal2_time_length)  # Set x-axis limits from 0 to 10
-        self.Plot2.setYRange(0, signal2_value_length)  # Set y-axis limits from 0 to 100
-
+        # Set x and y limits 
+        self.Plot2.setXRange(0, signal2_time_length)  
+        self.Plot2.setYRange(0, signal2_value_length) 
         # Set axis labels
         self.Plot2.setLabel('bottom', "Time (s)")
         self.Plot2.setLabel('left', "Abnormal Signal")
 
-        # Create two plots using PyQtGraph (shifted 50 pixels down)
+         # Initiate graph 3 for real-time signal
         self.Plot3 = pg.PlotWidget(self.centralwidget)
-        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  # Shifted from 20 to 70
+        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  
         self.Plot3.setObjectName("Plot3")
         # # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
-
         # Set axis labels
         self.Plot3.setLabel('bottom', "Time (s)")
         self.Plot3.setLabel('left', "Real Time Signal")
 
+         # Initiate graph 4 for non-rectangle signal
         self.Plot4 = pg.PlotWidget(self.centralwidget, polar=True)
-        self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  # Right Plot2
+        self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  
         self.Plot4.setObjectName("Plot4")
         # self.Plot4.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
-        
         signal4_time_length = len(self.x4)
         signal4_value1_length = len(self.y4)
-        #signal4_value2_length = len(self.z4)
-
-        # Set x and y limits (adjust as needed)
-        self.Plot4.setXRange(0, signal4_time_length)  # Set x-axis limits from 0 to 10
-        self.Plot4.setYRange(0, signal4_value1_length)  # Set y-axis limits from 0 to 100
-        #self.Plot4.setZRange(0, signal4_value2_length)  # Set z-axis limits from 0 to 100
-
+        # Set x and y limits 
+        self.Plot4.setXRange(0, signal4_time_length)  
+        self.Plot4.setYRange(0, signal4_value1_length)  
         # Set axis labels
-        self.Plot4.setLabel('bottom', "Time (s)")
-        self.Plot4.setLabel('left', "l-Channel Signal")
-        #self.Plot4.setLabel('top', "Q-Channel Signal")
+        self.Plot4.setLabel('bottom', "Theta")
+        self.Plot4.setLabel('left', "Angle")
+
 
         self.plotData()
 
     def plotData(self):
-        self.Plot1.enableAutoRange()  # Enable automatic scaling of axes
-        self.Plot1.showGrid(x=True, y=True)  # Show grid lines
+        """
+        Enables auto-ranging and grid lines for all plots.
+
+        Creates a timer to update plots dynamically every 150 milliseconds (adjustable).
+        Connects the timer's timeout signal to the `update_plot` function.
+        """
         
-        self.Plot2.enableAutoRange()  # Enable automatic scaling of axes
-        self.Plot2.showGrid(x=True, y=True)  # Show grid lines
+        # Enable automatic scaling of axes
+        self.Plot1.enableAutoRange()  
+        # Show grid lines
+        self.Plot1.showGrid(x=True, y=True)  
+        
+        self.Plot2.enableAutoRange()  
+        self.Plot2.showGrid(x=True, y=True)  
 
-        self.Plot3.enableAutoRange()  # Enable automatic scaling of axes
-        self.Plot3.showGrid(x=True, y=True)  # Show grid lines
+        self.Plot3.enableAutoRange()  
+        self.Plot3.showGrid(x=True, y=True)  
 
-        self.Plot4.enableAutoRange()  # Enable automatic scaling of axes
-        self.Plot4.showGrid(x=True, y=True)  # Show grid lines
+        self.Plot4.enableAutoRange()  
+        self.Plot4.showGrid(x=True, y=True)  
 
         # Create a timer to update the plot dynamically
         self.timer = QtCore.QTimer()
-        self.timer.setInterval(150)  # Adjust the interval as needed
+        # Adjust the interval as needed
+        self.timer.setInterval(150)  
         self.timer.timeout.connect(self.update_plot)
         self.timer.start()
 
     def update_plot(self):
-        # Update the plot with new data points
+        """
+        Updates each plot with new data points in a dynamic time window.
+
+        Iterates through each plot (Normal, Abnormal, Non-Rectangular):
+            - Checks if the plot index is within the data length.
+            - Extracts the next data point (time and value).
+            - Calculates the start and end indices for a dynamic time window (200 points by default).
+            - Updates the plot with the data points within the window (using `clear=True` to avoid overlapping lines).
+            - Sets the x-axis limits to match the current time window.
+        """
+        
+        # Update the plot with new data points for normal signal
         if self.plot_index < len(self.x1):
             next_x = self.x1[self.plot_index]
             next_y = self.y1[self.plot_index]
@@ -448,8 +469,10 @@ class Ui_MainWindow(object):
             # Set the x-axis limits to match the current time window
             self.Plot1.setXRange(self.x1[start_index], self.x1[end_index])
 
-            plt.pause(0.01)  # Adjust the pause time for animation speed
+            # Adjust the pause time for animation speed
+            plt.pause(0.01)  
             
+        # Update the plot with new data points for abnormal signal    
         if self.plot_index < len(self.x2):
             next_x = self.x2[self.plot_index]
             next_y = self.y2[self.plot_index]
@@ -465,8 +488,10 @@ class Ui_MainWindow(object):
             # Set the x-axis limits to match the current time window
             self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
 
-            plt.pause(0.01)  # Adjust the pause time for animation speed
+            # Adjust the pause time for animation speed
+            plt.pause(0.01)  
             
+        # Update the plot with new data points for non-rectangle signal    
         if self.plot_index < len(self.x4):
             next_x = self.x4[self.plot_index]
             next_y = self.y4[self.plot_index]
@@ -482,7 +507,8 @@ class Ui_MainWindow(object):
             # Set the x-axis limits to match the current time window
             self.Plot4.setXRange(self.x4[start_index], self.x4[end_index])
 
-            plt.pause(0.01)  # Adjust the pause time for animation speed
+            # Adjust the pause time for animation speed
+            plt.pause(0.01)  
 
         # # Extract timestamps and prices for plotting
         # timestamps = [x[0] for x in self.data]
