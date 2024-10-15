@@ -8,91 +8,32 @@ def select_signal(plot, signal):
     print("Some signal was selected")
     print(f"Signal selected on plot {plot.objectName()}")
 
-def move_selected_signal(source_plot, target_plot, source_timer, target_timer):
-    print("you are now in move_signals.py")
-    global selected_signal
+def move_signal_between_plots(ui_instance, moving_x, moving_y, target_plot_id, source_timer, source_plot_id):
+    print(f"Moving signal to Plot {target_plot_id}") 
 
-    if selected_signal is None:
-        print("No signal selected")
-        return
-
-        print(f"Attempting to move signal from {source_plot.objectName()} to {target_plot.objectName()}")
-
-    # Check the current items in the source and target plots
-    print("Current items in source plot before moving:", source_plot.listDataItems())
-    print("Current items in target plot before moving:", target_plot.listDataItems())
-
-
-    # Get the full history of the signal (x and y data)
-    x_data, y_data = selected_signal.getData()
-    print(f"Moving signal with x_data: {x_data} and y_data: {y_data}")
-    pen = selected_signal.opts['pen'] 
-
+    source_timer.stop()
     # Remove the signal from the source plot
-    source_plot.removeItem(selected_signal)
+    if source_plot_id == 1:
+        ui_instance.x1 = []  # Clear the data for Plot1
+    elif source_plot_id == 2:
+        ui_instance.x2 = []  # Clear the data for Plot2
 
-    # Add the signal to the target plot, with the same historical data
-    new_signal = pg.PlotDataItem(x_data, y_data, pen=pen)
-    target_plot.addItem(new_signal)
 
-    # Ensure the target plot timer is active to keep the signal running
-    if not target_timer.isActive():
-        target_timer.start()
+    # Append the signal to the target plot
+    if target_plot_id == 1:
+        ui_instance.x1.extend(moving_x)  # Append the moving signal to existing signals
+        ui_instance.y1.extend(moving_y)
+        print(f"Appended data to Plot1: {len(ui_instance.x1)} points now") 
+        ui_instance.ui.Plot1.clear() 
+        ui_instance.ui.Plot1.plot(ui_instance.x1, ui_instance.y1)
+    elif target_plot_id == 2:
+        ui_instance.x2.extend(moving_x)
+        ui_instance.y2.extend(moving_y)
+        print(f"Appended data to Plot2: {len(ui_instance.x2)} points now")  
+        ui_instance.ui.Plot2.clear()
+        ui_instance.ui.Plot2.plot(ui_instance.x2, ui_instance.y2)
 
-    # Stop the source plot's timer if no more signals are running on it
-    if len(source_plot.listDataItems()) == 0: 
-        if source_timer.isActive():
-            source_timer.stop()
+    # Update the plot indices to reset and avoid index errors
+    ui_instance.plot_index1 = 0
+    ui_instance.plot_index2 = 0
 
-    print(f"Signal moved from {source_plot.objectName()} to {target_plot.objectName()}")
-     # Check the items in the source and target plots after moving
-    print("Current items in source plot after moving:", source_plot.listDataItems())
-    print("Current items in target plot after moving:", target_plot.listDataItems())
-
-    # Reset the selected signal
-    selected_signal = None
-
-# import pyqtgraph as pg 
-
-# selected_signal = None
-# # selected_signal_timer = None
-
-# def select_signal(plot, signal):
-
-#     global selected_signal
-#     selected_signal = signal
-
-#     print("some siganl was selected")
-#     print(f"signal selected on plot{plot.objectName()}")
-
-# def move_selected_signal(source_plot, target_plot, source_timer, target_timer):
-
-#     global selected_signal
-
-#     if selected_signal is None:
-#         print("No signal selected")
-#         return
-
-#     # Get the full history of the signal (x and y data)
-#     x_data, y_data = selected_signal.getData()
-#     pen = selected_signal.opts['pen'] 
-
-#     # Remove the signal from the source plot
-#     source_plot.removeItem(selected_signal)
-
-#     # Add the signal to the target plot, with the same historical data
-#     new_signal = pg.PlotDataItem(x_data, y_data, pen=pen)
-#     target_plot.addItem(new_signal)
-
-#     # Ensure the target plot timer is active to keep the signal running
-#     if not target_timer.isActive():
-#         target_timer.start()
-
-#     # Stop the source plot's timer if no more signals are running on it
-#     if len(source_plot.listDataItems()) == 0: 
-#         if source_timer.isActive():
-#             source_timer.stop()
-
-#     print(f"signal moved from {source_plot.objectName()} to {target_plot.objectName()}")
-
-#     selected_signal = None

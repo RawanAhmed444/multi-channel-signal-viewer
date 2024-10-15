@@ -1,17 +1,18 @@
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QPoint
 import pyqtgraph as pg
 from pyqtgraph import PlotDataItem
 from logic.signal_processing import load_signal_from_file
 import pandas as pd
 import matplotlib.pyplot as plt
 from logic.calculate_stats import calculate_statistics
-from logic.move_signals import move_selected_signal
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen
 from PyQt5.QtWidgets import QGraphicsView
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
+from scipy import interpolate
 
 
 class CustomMessageBox(QtWidgets.QMessageBox):
@@ -153,17 +154,137 @@ class RightClickPopup(QtWidgets.QMenu):
         self.addAction("Move" , self.move_signal_action)
         self.addSeparator()
         self.addAction("Statistics", self.show_statistics)
+        self.addSeparator()
+        self.addAction("Copy", self.copy_signal_action)
+
+
+    def copy_signal_action(self):
+        print("Copy action triggered")
+        self.hide()  # Hide the context menu
+        if self.source_plot:
+            self.copy_signal(self.source_plot)
+
+    def copy_signal(self, source_plot):
+     if self.selected_signal_data:
+        copied_x, copied_y = self.selected_signal_data  # This is the selected signal (signal2)
+        target_plot = self.parent().ui.Plot3  # Target plot is Plot3
+
+        # Check how many signals are already in Plot3
+        existing_signals = target_plot.listDataItems()
+
+        if len(existing_signals) == 0:
+            # Plot the first signal segment in Plot3 (signal1 is not yet present)
+            target_plot.plot(copied_x, copied_y, pen=pg.mkPen(color='b')) 
+            print("First signal segment copied to Plot3")
+
+        elif len(existing_signals) == 1:
+            # Retrieve the existing signal data in Plot3 (signal1)
+            existing_data = existing_signals[0].getData()
+            signal1 = existing_data  # Existing signal data in Plot3
+            signal2 = (copied_x, copied_y)  # New selected signal from source_plot
+
+            # Connect the two signals
+            self.connect_signals(signal1, signal2)
+            print("Second signal segment copied and connected in Plot3")
+
+        else:
+            # Already two segments in Plot3, do not allow more
+            print("Error: Only two signal segments are allowed in Plot3")
+
+     else:
+        print("No signal selected to copy")
+
+
+    def calculate_curvature(self, x, y):
+        # Calculate first and second derivatives using numpy gradient
+        dy = np.gradient(y, x)
+        ddy = np.gradient(dy, x)
+        
+        # Return the mean absolute curvature as a measure of smoothness
+        return np.mean(np.abs(ddy))
+
+    def determine_interpolation_order(self, curvature1, curvature2):
+        """Determine the interpolation order based on the curvature of the two signals."""
+        average_curvature = (curvature1 + curvature2) / 2
+        
+        if average_curvature < 50000:
+            return 1 
+        elif 50000 <= average_curvature < 100000:
+            return 2
+        else:
+            return 3 
+
+    def connect_signals(self, signal1, signal2):
+        # Extract x and y data
+        x1, y1 = signal1
+        x2, y2 = signal2
+        
+        # Ensure the X and Y arrays are of the same length
+        if len(x1) != len(y1) or len(x2) != len(y2):
+            print("Error: Signal1 or Signal2 X and Y data are not of the same length.")
+            return
+        
+        # Find the connecting point (last point of the first signal)
+        last_x1, last_y1 = x1[-1], y1[-1]
+        first_x2, first_y2 = x2[0], y2[0]
+        
+        # Calculate horizontal and Euclidean distances
+        horizontal_distance = abs(first_x2 - last_x1)
+        euclidean_distance = np.sqrt((first_x2 - last_x1) ** 2 + (first_y2 - last_y1) ** 2)
+        print(f"Horizontal distance between signals: {horizontal_distance}")
+        print(f"Euclidean distance between signals: {euclidean_distance}")
+        
+        # Check if the signals overlap or have a gap
+        if last_x1 > first_x2:
+            print("Error: Signals overlap. Cannot connect them directly.")
+            return
+        
+        # Calculate curvature for both signals
+        curvature1 = self.calculate_curvature(x1, y1)
+        curvature2 = self.calculate_curvature(x2, y2)
+        print(f"Curvature of signal1: {curvature1}")
+        print(f"Curvature of signal2: {curvature2}")
+        
+        # Determine the best interpolation order based on curvature
+        interpolation_order = self.determine_interpolation_order(curvature1, curvature2)
+        print(f"Automatically selected interpolation order: {interpolation_order}")
+        
+        # Set interpolation kind based on the order
+        if interpolation_order == 1:
+            kind = 'linear'
+        elif interpolation_order == 2:
+            kind = 'quadratic'
+        elif interpolation_order == 3:
+            kind = 'cubic'
+        
+        # Create an array for new x values for interpolation between the two signals
+        num_interp_points = min(len(x1), len(x2))  # Ensure interpolation points are not too large
+        new_x = np.linspace(last_x1, first_x2, num=num_interp_points)  # Interpolate between signals
+        
+        # Create interpolators
+        f1 = interpolate.interp1d(x1, y1, kind=kind, bounds_error=False, fill_value='extrapolate')
+        f2 = interpolate.interp1d(x2, y2, kind=kind, bounds_error=False, fill_value='extrapolate')
+        
+        # Get interpolated y values for both signals
+        new_y1 = f1(new_x)
+        new_y2 = f2(new_x)
+        
+        # Combine signals
+        combined_x = np.concatenate((x1, new_x, x2))
+        combined_y = np.concatenate((y1, new_y1, y2))
+        
+        # Clear and replot Plot3 with the combined signal
+        self.parent().ui.Plot3.clear()
+        self.parent().ui.Plot3.plot(combined_x, combined_y, pen=pg.mkPen(color='g')) 
+        print(f"Connected signals in Plot3 with {len(combined_x)} total points using {kind} interpolation.")
 
     def move_signal_action(self):
         print("Move action triggered")
         self.hide()  # Hide the context menu
-        if self.source_plot and self.target_plot and self.selected_signal:
+        if self.source_plot and self.target_plot:
             self.move_signal(self.source_plot, self.target_plot, self.source_timer, self.target_timer)
-
-    # def move_signal(self):
-    #     if self.source_plot and self.target_plot and self.selected_signal:
-    #        self.hide() 
-    #        self.parent.move_selected_signal(self.source_plot, self.target_plot, self.source_timer, self.target_timer)
+        elif self.target_plot == self.parent().ui.Plot3:
+            self.parent().move_signal_to_plot3(self.selected_signal_data)
 
     def show_statistics(self):
         if self.selected_signal_data is not None:
@@ -199,12 +320,11 @@ class Ui_MainWindow(object):
         self.plot_index = 0  # Initialize plot_index
         self.parent = None
 
-        # normal_signal = "src\\data\\signals\\ECG_Normal.csv"
-        # self.x1, self.y1 = self.convert_signal_values_to_numeric(normal_signal)
-        
-        # abnormal_signal = "src\\data\\signals\\ECG_Abnormal.csv"
-        # self.x2, self.y2 = self.convert_signal_values_to_numeric(abnormal_signal)
-    
+        self.selection_start = None
+        self.selection_end = None
+        self.cursor_position = 0  # Tracks the current cursor position
+        self.selection_marker = None
+
         self.x1, self.y1 = [0], [0]
         self.x2, self.y2 = [0], [0]
 
@@ -220,6 +340,10 @@ class Ui_MainWindow(object):
 
         # Initialize plots
         self.initPlots()
+        self.Plot1.setFocus()
+
+        self.Plot1.installEventFilter(self.parent)
+        self.Plot2.installEventFilter(self.parent)
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
@@ -245,7 +369,6 @@ class Ui_MainWindow(object):
         self.Snapshot1 = self.createButtonWithIcon("C:/Users/HP/Task1/Photos/Snapshot.png", 610, 290, )     # Left SS button
         self.Play_stop1 = self.createToggleButton("C:/Users/HP/Task1/Photos/Pause.png", "C:/Users/HP/Task1/Photos/Play.png", 370, 290, )    # Left Toggle P/S button
 
-        # self.GlueButton = self.createButton("Glue", 1,1)
         self.Load1Button = self.createButton("Graph1", 1,1)
         self.Load2Button = self.createButton("Graph2", 100,1)
         self.Load1Button.clicked.connect(self.load_first_signal)
@@ -343,18 +466,18 @@ class Ui_MainWindow(object):
             # Unlink the plots
             self.Plot2.setXLink(None)
             self.Plot2.setYLink(None)
-            self.link_button.setText("Link Plots")  # Change button text to "Link Plots"
-            is_linked = False  # Update the state
+            self.link_button.setText("Link Plots")  
+            is_linked = False 
         else:
             # Link the plots and set the same zoom
             self.Plot2.setXLink(self.Plot1)
-            self.Plot2.setYLink(self.Plot1)  # Uncomment if you want to link y-axis as well
+            self.Plot2.setYLink(self.Plot1)  
             # Synchronize zoom levels
             self.Plot2.getViewBox().setRange(xRange=self.Plot1.getViewBox().viewRange()[0],
                                              yRange=self.Plot1.getViewBox().viewRange()[1],
                                              padding=0)
-            self.link_button.setText("Unlink Plots")  # Change button text to "Unlink Plots"
-            is_linked = True  # Update the state
+            self.link_button.setText("Unlink Plots")  
+            is_linked = True  
     
     def createButton(self, text, x, y, slot=None, size=(100, 30), font_size=18):
         button = QtWidgets.QPushButton(self.centralwidget)
@@ -496,7 +619,6 @@ class Ui_MainWindow(object):
         self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  # Right Plot2
         self.Plot4.setObjectName("Plot4")
 
-        # Example data for plotting
         self.plotData()
 
     def plotData(self):
@@ -507,12 +629,12 @@ class Ui_MainWindow(object):
         self.Plot2.showGrid(x=True, y=True)  # Show grid lines
 
         self.timer1 = QtCore.QTimer()
-        self.timer1.setInterval(150)  # Adjust the interval as needed
+        self.timer1.setInterval(150)  
         self.timer1.timeout.connect(lambda: self.update_plot(1))  # Connect to update_plot for Plot1
         self.timer1.start()
 
         self.timer2 = QtCore.QTimer()
-        self.timer2.setInterval(150)  # Adjust the interval as needed
+        self.timer2.setInterval(150)  
         self.timer2.timeout.connect(lambda: self.update_plot(2))  # Connect to update_plot for Plot2
         self.timer2.start()
 
@@ -534,40 +656,102 @@ class Ui_MainWindow(object):
         if self.play_stop_signals.is_playing(plot_id):  # For Plot1
             if plot_id == 1:
                 if self.plot_index1 < len(self.x1):
-                    next_x = self.x1[self.plot_index1]
-                    next_y = self.y1[self.plot_index1]
-                    self.plot_index1 += 1
+                    # next_x = self.x1[self.plot_index1]
+                    # next_y = self.y1[self.plot_index1]
+                    # self.plot_index1 += 1
 
                     # Calculate the start and end indices for the dynamic time window
-                    start_index = max(self.plot_index1 - 200, 0)  # Adjust the window size as needed
+                    start_index = max(self.plot_index1 - 200, 0) 
                     end_index = self.plot_index1
 
                     # Update the plot with the dynamic time window
                     self.Plot1.plot(self.x1[start_index:end_index], self.y1[start_index:end_index], pen='r', clear=True)
-
-                    # Set the x-axis limits to match the current time window
+                    self.plot_index1 += 1
+                    
                     self.Plot1.setXRange(self.x1[start_index], self.x1[end_index])
 
-                    plt.pause(0.01)  # Adjust the pause time for animation speed
+                    plt.pause(0.01)  
  
         if plot_id == 2 and self.play_stop_signals.is_playing(plot_id):     
             if self.plot_index2 < len(self.x2):
-                next_x = self.x2[self.plot_index2]
-                next_y = self.y2[self.plot_index2]
-                self.plot_index2 += 1
+                # next_x = self.x2[self.plot_index2]
+                # next_y = self.y2[self.plot_index2]
+                # self.plot_index2 += 1
                 
                 # Calculate the start and end indices for the dynamic time window
-                start_index = max(self.plot_index2 - 200, 0)  # Adjust the window size as needed
+                start_index = max(self.plot_index2 - 200, 0)  
                 end_index = self.plot_index2
 
                 # Update the plot with the dynamic time window
                 self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=True)
+                self.plot_index2 += 1
 
-                # Set the x-axis limits to match the current time window
                 self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
 
-                plt.pause(0.01)  # Adjust the pause time for animation speed
-
+                plt.pause(0.01) 
+                
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+    
+    # def eventFilter(self, source, event):
+    #     print(f"Event source: {source}")
+    #     if event.type() == QEvent.KeyPress:
+    #         if event.key() == Qt.Key_Left:
+    #             print("Left arrow key pressed.") 
+    #             self.move_cursor(-1)
+    #             event.accept() 
+    #             return True  # Block further processing
+    #         elif event.key() == Qt.Key_Right:
+    #             print("Right arrow key pressed.")
+    #             self.move_cursor(1)
+    #             event.accept() 
+    #             return True  # Block further processing
+    #         elif event.key() == Qt.Key_Return:  # Press Enter to set selection
+    #             self.toggle_selection()
+    #             print("Enter key pressed, toggling selection.")
+    #             event.accept() 
+    #             return True  # Block further processing
+
+    #     return super(MainWindow, self).eventFilter(source, event)
+
+    # def move_cursor(self, direction):
+    #     """Move the selection cursor left or right."""
+    #     if self.selection_marker:
+    #         self.cursor_position += direction
+    #         # Update the cursor position visually
+    #         self.update_cursor_marker()
+
+    # def toggle_selection(self):
+    #     """Toggle between starting and ending selection."""
+    #     if self.selection_start is None:
+    #         # Set the start of selection
+    #         self.selection_start = self.cursor_position
+    #         self.selection_marker = pg.InfiniteLine(pos=self.cursor_position, angle=90, pen='r')
+    #         self.plot1.addItem(self.selection_marker)
+    #     elif self.selection_end is None:
+    #         # Set the end of selection
+    #         self.selection_end = self.cursor_position
+    #         # Visualize the selection area
+    #         self.finalize_selection()
+
+    # def finalize_selection(self):
+    #     """Finalize the selection and visualize it."""
+    #     if self.selection_start is not None and self.selection_end is not None:
+    #         # Ensure the selection is from left to right
+    #         start, end = sorted([self.selection_start, self.selection_end])
+    #         selection_rect = pg.RectROI([start, 0], [end - start, 1], pen='g', movable=False)
+    #         self.plot1.addItem(selection_rect)
+
+    #         # Reset selection variables
+    #         self.selection_start = None
+    #         self.selection_end = None
+    #         self.cursor_position = 0
+    #         self.plot1.removeItem(self.selection_marker)
+
+    # def update_cursor_marker(self):
+    #     """Update the position of the selection cursor."""
+    #     if self.selection_marker:
+    #         self.selection_marker.setPos(self.cursor_position)
+
+    

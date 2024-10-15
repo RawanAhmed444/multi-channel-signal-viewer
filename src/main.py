@@ -9,13 +9,14 @@ from PyQt5.QtCore import QPoint, QTimer
 from logic.calculate_stats import calculate_statistics
 from logic.take_snapshot import take_snapshot
 from logic.generate_pdf import generate_pdf
-from logic.move_signals import select_signal, move_selected_signal
+from logic.move_signals import select_signal, move_signal_between_plots
 from logic.signal_processing import load_signal_from_file
 import pandas as pd
 import matplotlib.pyplot as plt
 from logic.play_stop import PlayStopSignals 
 from logic.move_signals import selected_signal
-
+from scipy import interpolate
+import numpy as np
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -28,6 +29,12 @@ class MainWindow(QtWidgets.QMainWindow):
         #list to store snapshots and statistics
         self.snapshots = []
         self.statistics_data = []
+
+         # Initialize signal data
+        self.x1 = []  # X data for Plot1
+        self.y1 = []  # Y data for Plot1
+        self.x2 = []  # X data for Plot2
+        self.y2 = []  # Y data for Plot2
 
         # Initialize the timers for plot updates
         self.timers = {
@@ -62,12 +69,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.Plot2.scene().sigMouseClicked.connect(lambda event: self.on_plot_click(event, self.ui.Plot2))
 
         self.selected_signal = None
-        self.selected_signal_timer = None
+        self.selected_signal_data = None
 
     def on_plot_click(self, event, plot_widget):
-        global selected_signal
         if event.button() == QtCore.Qt.LeftButton:
-
             items = plot_widget.listDataItems()
             if items:
                 # select a signal from the many signals being displayed on the plot
@@ -77,7 +82,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     break   # Ensure we only select the first one clicked
 
                 x_data, y_data = self.get_plot_data(plot_widget)
-                self.selected_signal_data = y_data  # Store the selected signal data for use in the context menu
+                self.selected_signal_data = (x_data, y_data)  # Store the selected signal data for use in the context menu
             else:
                 print("No signals available in the plot.")  # Debugging line
                    
@@ -95,9 +100,10 @@ class MainWindow(QtWidgets.QMainWindow):
             target_plot=target_plot,
             source_timer=self.timers[1] if source_plot == self.ui.Plot1 else self.timers[2],
             target_timer=self.timers[2] if target_plot == self.ui.Plot2 else self.timers[1],
-            move_signal=self.move_signal
+            move_signal=self.move_signal,
         )
             context_menu.exec_(QPoint(int(event.screenPos().x()), int(event.screenPos().y()))) #show the menu at the mouse position 
+
 
     # linking this to take_snapshot file
     def take_snapshot(self, plot_widget, plot_name):
@@ -134,9 +140,24 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.timers[plot_id].start()
 
     def move_signal(self, source_plot, target_plot, source_timer, target_timer):
-        print("you are now in main.py")
-        move_selected_signal(source_plot, target_plot, source_timer, target_timer)
+         if self.selected_signal_data:  
+            moving_x, moving_y = self.selected_signal_data
+            if source_plot == self.ui.Plot1:
+                    source_plot_id = 1
+                    target_plot_id = 2  # Moving signal from Plot1 to Plot2
+            else:
+                    source_plot_id = 2
+                    target_plot_id = 1  # Moving signal from Plot2 to Plot1
 
+            move_signal_between_plots(self, moving_x, moving_y, target_plot_id, source_timer,source_plot_id)
+
+            # Start the target plot's timer if it's not already running
+            if not target_timer.isActive():
+                target_timer.start()
+
+            self.ui.update_plot(target_plot_id)
+            print(f"Signal moved from Plot{source_plot_id} to Plot{target_plot_id}")
+       
     def get_plot_data(self, plot_widget):
         items = plot_widget.listDataItems()
         full_y_data = []
@@ -160,7 +181,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 os.remove(snapshot)
             self.snapshots.clear()
             self.statistics_data.clear()
-        
+
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     mainWindow = MainWindow()
