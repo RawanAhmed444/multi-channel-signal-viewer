@@ -1,11 +1,11 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
+import numpy as np
 from pyqtgraph import PlotDataItem
-from logic.signal_processing import load_signal_from_file
-import pandas as pd
+from logic.signal_processing import convert_signal_values_to_numeric, cartesian_to_polar
+from logic.real_time_data import update_real_time_data
 import matplotlib.pyplot as plt
 from logic.calculate_stats import calculate_statistics
-
 
 class CustomMessageBox(QtWidgets.QMessageBox):
     def __init__(self, parent=None):
@@ -155,30 +155,28 @@ class RightClickPopup(QtWidgets.QMenu):
         super(RightClickPopup, self).showEvent(event)
 
 class Ui_MainWindow(object):
-    def convert_signal_values_to_numeric(self, filename):
-        signal_data = load_signal_from_file(filename)
-        df = pd.DataFrame(signal_data)
-
-        # Convert the columns to numeric
-        df[0] = pd.to_numeric(df[0], errors='coerce')
-        df[1] = pd.to_numeric(df[1], errors='coerce')
-
-        # Extract the converted data
-        x = df[0].values
-        y = df[1].values
-        
-        return x, y
-    
     def __init__(self):
         super().__init__()
-        self.plot_index = 0  # Initialize plot_index
+        # Initialize plot_index
+        self.plot_index = 0  
 
+        # Initialize the normal signal file and its axis
         normal_signal = "src\\data\\signals\\ECG_Normal.csv"
-        self.x1, self.y1 = self.convert_signal_values_to_numeric(normal_signal)
+        self.x1, self.y1 = convert_signal_values_to_numeric(normal_signal)
         
+        # Initialize the abnormal signal file and its axis
         abnormal_signal = "src\\data\\signals\\ECG_Abnormal.csv"
-        self.x2, self.y2 = self.convert_signal_values_to_numeric(abnormal_signal)
-    
+        self.x2, self.y2 = convert_signal_values_to_numeric(abnormal_signal)
+        
+        # Initialize the non rectangle signal file and its axis
+        non_rectangle_signal = "src\\data\\signals\\radar.csv"
+        self.x4, self.y4= cartesian_to_polar(non_rectangle_signal)
+        
+        # # Initialize data list for the real-time data points
+        # self.data = []
+        # time_stamp, price = update_real_time_data()
+        # self.data.append([time_stamp, price])
+        
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1920, 1080)
@@ -358,9 +356,6 @@ class Ui_MainWindow(object):
         signal1_time_length = len(self.x1)
         signal1_value_length = len(self.y1)
         
-        signal2_time_length = len(self.x2)
-        signal2_value_length = len(self.y2)
-        
         #Set x and y limits (adjust as needed)
         self.Plot1.setXRange(0, signal1_time_length)  # Set x-axis limits from 0 to 10
         self.Plot1.setYRange(0, signal1_value_length)  # Set y-axis limits from 0 to 100
@@ -374,6 +369,9 @@ class Ui_MainWindow(object):
         self.Plot2.setGeometry(QtCore.QRect(120, 390, 541, 201))  # Shifted from 340 to 390
         self.Plot2.setObjectName("Plot2")
         # self.Plot2.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        
+        signal2_time_length = len(self.x2)
+        signal2_value_length = len(self.y2)
 
         # Set x and y limits (adjust as needed)
         self.Plot2.setXRange(0, signal2_time_length)  # Set x-axis limits from 0 to 10
@@ -383,18 +381,35 @@ class Ui_MainWindow(object):
         self.Plot2.setLabel('bottom', "Time (s)")
         self.Plot2.setLabel('left', "Abnormal Signal")
 
-        # Mirrored plots
+        # Create two plots using PyQtGraph (shifted 50 pixels down)
         self.Plot3 = pg.PlotWidget(self.centralwidget)
-        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  # Right Plot1
+        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  # Shifted from 20 to 70
         self.Plot3.setObjectName("Plot3")
-        # self.Plot3.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        # # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
 
-        self.Plot4 = pg.PlotWidget(self.centralwidget)
+        # Set axis labels
+        self.Plot3.setLabel('bottom', "Time (s)")
+        self.Plot3.setLabel('left', "Real Time Signal")
+
+        self.Plot4 = pg.PlotWidget(self.centralwidget, polar=True)
         self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  # Right Plot2
         self.Plot4.setObjectName("Plot4")
         # self.Plot4.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        
+        signal4_time_length = len(self.x4)
+        signal4_value1_length = len(self.y4)
+        #signal4_value2_length = len(self.z4)
 
-        # Example data for plotting
+        # Set x and y limits (adjust as needed)
+        self.Plot4.setXRange(0, signal4_time_length)  # Set x-axis limits from 0 to 10
+        self.Plot4.setYRange(0, signal4_value1_length)  # Set y-axis limits from 0 to 100
+        #self.Plot4.setZRange(0, signal4_value2_length)  # Set z-axis limits from 0 to 100
+
+        # Set axis labels
+        self.Plot4.setLabel('bottom', "Time (s)")
+        self.Plot4.setLabel('left', "l-Channel Signal")
+        #self.Plot4.setLabel('top', "Q-Channel Signal")
+
         self.plotData()
 
     def plotData(self):
@@ -404,6 +419,12 @@ class Ui_MainWindow(object):
         self.Plot2.enableAutoRange()  # Enable automatic scaling of axes
         self.Plot2.showGrid(x=True, y=True)  # Show grid lines
 
+        self.Plot3.enableAutoRange()  # Enable automatic scaling of axes
+        self.Plot3.showGrid(x=True, y=True)  # Show grid lines
+
+        self.Plot4.enableAutoRange()  # Enable automatic scaling of axes
+        self.Plot4.showGrid(x=True, y=True)  # Show grid lines
+
         # Create a timer to update the plot dynamically
         self.timer = QtCore.QTimer()
         self.timer.setInterval(150)  # Adjust the interval as needed
@@ -411,7 +432,7 @@ class Ui_MainWindow(object):
         self.timer.start()
 
     def update_plot(self):
-    # Update the plot with new data points
+        # Update the plot with new data points
         if self.plot_index < len(self.x1):
             next_x = self.x1[self.plot_index]
             next_y = self.y1[self.plot_index]
@@ -445,6 +466,28 @@ class Ui_MainWindow(object):
             self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
 
             plt.pause(0.01)  # Adjust the pause time for animation speed
+            
+        if self.plot_index < len(self.x4):
+            next_x = self.x4[self.plot_index]
+            next_y = self.y4[self.plot_index]
+            self.plot_index += 1
+              
+            # Calculate the start and end indices for the dynamic time window
+            start_index = max(self.plot_index - 200, 0)  # Adjust the window size as needed
+            end_index = self.plot_index
+
+            # Update the plot with the dynamic time window
+            self.Plot4.plot(self.x4[start_index:end_index], self.y4[start_index:end_index], pen='y', clear=True)
+
+            # Set the x-axis limits to match the current time window
+            self.Plot4.setXRange(self.x4[start_index], self.x4[end_index])
+
+            plt.pause(0.01)  # Adjust the pause time for animation speed
+
+        # # Extract timestamps and prices for plotting
+        # timestamps = [x[0] for x in self.data]
+        # prices = [x[1] for x in self.data]
+        # self.Plot3.plot(x=timestamps, y=prices, pen='y')
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
