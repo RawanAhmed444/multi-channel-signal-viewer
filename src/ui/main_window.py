@@ -272,6 +272,9 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    def slider_value_changed(self, value):
+        print(f"Slider value: {value}")
+        
 
     def initButtons(self):
         # Button configurations (shifted down by 50 pixels)
@@ -314,7 +317,72 @@ class Ui_MainWindow(object):
         self.ZoomOut3.clicked.connect(self.zoom_out_3)    
 
     
-        self.Report = self.createButton("Report",1350, 800, size=(250, 60), font_size=40)  # Report button
+        self.Report = self.createButton("Report",1250, 800, size=(250, 60), font_size=40)  # Report button
+
+        self.radioBoxGroup = QtWidgets.QGroupBox(self.centralwidget)
+        self.radioBoxGroup.setGeometry(QtCore.QRect(1600, 755, 160, 150))
+        self.radioBoxGroup.setStyleSheet("""
+            QGroupBox {
+            background-color: #353535;  /* Dark gray background */
+            color: #ffffff;             /* White text */
+            border: 1px solid #959494;  /* White border */
+            border-radius: 6px;         /* Rounded corners */
+            font-size: 24px;            /* Font size */                       
+            font-weight: bold;          /* Bold text */
+            font-family: 'Arial', 'Helvetica', sans-serif; /* Elegant font */
+
+            }
+            QRadioButton {
+            color: #ffffff;             /* White text */
+            font-size: 28px;            /* Font size */
+            font-weight: normal;        /* Normal text weight */
+            font-family: 'Arial', 'Helvetica', sans-serif; /* Elegant font */
+            background-color: transparent; /* Transparent background */
+            text-align: Center;           /* Center text */
+
+            }
+        """)
+
+        self.radioLinear = QtWidgets.QRadioButton("Linear", self.radioBoxGroup)
+        self.radioLinear.setGeometry(QtCore.QRect(10, 30, 150, 30))
+
+        self.radioQuadratic = QtWidgets.QRadioButton("Quadratic", self.radioBoxGroup)
+        self.radioQuadratic.setGeometry(QtCore.QRect(10, 60, 150, 30))
+
+
+        self.radioCubic = QtWidgets.QRadioButton("Cubic", self.radioBoxGroup)
+        self.radioCubic.setGeometry(QtCore.QRect(10, 90, 150, 30))
+
+
+        # Set default selection
+        self.radioLinear.setChecked(True)
+
+
+        # Create a slider below the 3rd graph
+        self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self.centralwidget)
+        self.slider.setGeometry(QtCore.QRect(1120, 680, 500, 30))  # Position the slider below the 3rd graph
+        self.slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+            background: #353535;  /* Dark gray background */
+            height: 10px;         /* Groove height */
+            border-radius: 5px;   /* Rounded corners */
+            }
+        QSlider::handle:horizontal { 
+	        background-color: #767676; 
+	        border: 2px solid #121212; 
+	        width: 16px; 
+	        height: 20px; 
+	        line-height: 20px; 
+	        margin-top: -5px; 
+	        margin-bottom: -5px; 
+	        border-radius: 10px; 
+        }
+        """)
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(100)
+        self.slider.setValue(50)
+        self.slider.valueChanged.connect(self.slider_value_changed)
+
     
     def load_first_signal(self):
         # Open the file dialog for the first signal
