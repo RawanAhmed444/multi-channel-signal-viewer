@@ -367,16 +367,20 @@ class Ui_MainWindow(object):
             height: 10px;         /* Groove height */
             border-radius: 5px;   /* Rounded corners */
             }
-        QSlider::handle:horizontal { 
-	        background-color: #767676; 
-	        border: 2px solid #121212; 
-	        width: 16px; 
-	        height: 20px; 
-	        line-height: 20px; 
-	        margin-top: -5px; 
-	        margin-bottom: -5px; 
-	        border-radius: 10px; 
-        }
+            QSlider::sub-page:horizontal {
+            background: #616161;  /* Color behind the handle */
+            border-radius: 5px;   /* Rounded corners */
+            }
+            QSlider::handle:horizontal { 
+            background-color: #616161; 
+            border: 2px solid #121212; 
+            width: 24px; 
+            height: 24px; 
+            line-height: 20px; 
+            margin-top: -7px; 
+            margin-bottom: -7px; 
+            border-radius: 12px; 
+            }
         """)
         self.slider.setMinimum(0)
         self.slider.setMaximum(100)
