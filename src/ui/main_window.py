@@ -374,7 +374,7 @@ class Ui_MainWindow(object):
             QSlider::handle:horizontal { 
             background-color: #616161; 
             border: 2px solid #121212; 
-            width: 24px; 
+            width: 20px; 
             height: 24px; 
             line-height: 20px; 
             margin-top: -7px; 
