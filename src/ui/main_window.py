@@ -99,7 +99,7 @@ class StatisticsPopup(QtWidgets.QDialog):
 
         # Close button
         closeButton = QtWidgets.QPushButton("Close")
-        closeButton.clicked.connect(self.close)
+        closeButton.clicked.connect(self.hide)
         layout.addWidget(closeButton)
 
     def display_statistics(self, selected_signal_stats):
@@ -112,9 +112,10 @@ class StatisticsPopup(QtWidgets.QDialog):
         self.statsLabel.setText(selected_signal_stats_text)
 
 class RightClickPopup(QtWidgets.QMenu):
-    def __init__(self, parent=None, selected_signal_data=None):
+    def __init__(self, parent=None, selected_signal_data=None, main_window = None):
         super(RightClickPopup, self).__init__(parent)
         self.selected_signal_data = selected_signal_data
+        self.main_window = main_window 
         self.setStyleSheet("""
             QMenu {
             background-color: #1D1C1C;  /* Dark gray background */
@@ -140,13 +141,13 @@ class RightClickPopup(QtWidgets.QMenu):
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint)  # Remove title bar
 
         # Add actions to the menu
-        self.addAction("Name", self.close)
+        self.addAction("Name", self.hide)
         self.addSeparator()
-        self.addAction("Color", self.close)
+        self.addAction("Color", self.hide)
         self.addSeparator()
-        self.addAction("Hide", self.close)
+        self.addAction("Hide", self.hide)
         self.addSeparator()
-        self.addAction("Swap" , self.close)
+        self.addAction("Swap" , self.swap_signals)
         self.addSeparator()
         self.addAction("Statistics", self.show_statistics)
        
@@ -156,8 +157,16 @@ class RightClickPopup(QtWidgets.QMenu):
             stats_popup = StatisticsPopup()
             stats_popup.display_statistics(selected_signal_stats)
             stats_popup.exec_()
-        
-    def showEvent(self, pos):
+            self.close() 
+
+    def swap_signals(self):
+        """Swap the signals between Plot1 and Plot2"""
+        self.hide()
+        if self.main_window:
+            self.main_window.swap_signals_between_plots()
+        self.close()
+  
+    def showEvent(self, event):
         cursor_pos = QtGui.QCursor.pos()
         self.move(cursor_pos)
         super(RightClickPopup, self).showEvent(event)
@@ -165,7 +174,6 @@ class RightClickPopup(QtWidgets.QMenu):
     
 
 class Ui_MainWindow(object):
-
     def convert_signal_values_to_numeric(self, filename):
         signal_data = load_signal_from_file(filename)
         df = pd.DataFrame(signal_data)
@@ -193,7 +201,15 @@ class Ui_MainWindow(object):
         self.segment2 = None  # Placeholder for the second selected segment
         self.last_interpolation_curve = None
         self.selected_signal_data = None
-        # self.base_distance = 1.0
+
+        self.timer1 = QtCore.QTimer()
+        self.timer1.setInterval(150)  # Adjust the interval as needed
+        self.timer1.timeout.connect(lambda: self.update_plot(1))  # Connect to update_plot for Plot1
+
+        self.timer2 = QtCore.QTimer()
+        self.timer2.setInterval(150)  # Adjust the interval as needed
+        self.timer2.timeout.connect(lambda: self.update_plot(2))  # Connect to update_plot for Plot2
+
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -202,7 +218,6 @@ class Ui_MainWindow(object):
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         print(type(self.centralwidget.children))
-
 
         # Initialize buttons and other UI elements
         self.initButtons()
@@ -290,9 +305,7 @@ class Ui_MainWindow(object):
         self.ZoomIn2.clicked.connect(self.zoom_in_2)
         self.ZoomOut2.clicked.connect(self.zoom_out_2)
        
-
         # Right side buttons (renamed mirrored buttons)
-        
         self.ZoomIn3 = self.createButtonWithIcon("src/data/Images/Zoom in.png", 1680, 670)  # Right Zoom In button
         self.ZoomOut3 = self.createButtonWithIcon("src/data/Images/Zoom out.png", 1760, 670 ) # Right Zoom Out button
         self.Snapshot3 = self.createButtonWithIcon("src/data/Images/Snapshot.png", 1840, 670)     # Right SS button   
@@ -300,7 +313,6 @@ class Ui_MainWindow(object):
         self.ZoomIn3.clicked.connect(self.zoom_in_3)
         self.ZoomOut3.clicked.connect(self.zoom_out_3)    
 
-    
         self.Report = self.createButton("Report",1250, 800, size=(250, 60), font_size=40)  # Report button
 
         self.radioBoxGroup = QtWidgets.QGroupBox(self.centralwidget)
@@ -337,10 +349,8 @@ class Ui_MainWindow(object):
         self.radioCubic = QtWidgets.QRadioButton("Cubic", self.radioBoxGroup)
         self.radioCubic.setGeometry(QtCore.QRect(10, 90, 150, 30))
 
-
         # Set default selection
         self.radioLinear.setChecked(True)
-
 
         # Create a slider below the 3rd graph
         self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self.centralwidget)
@@ -390,6 +400,7 @@ class Ui_MainWindow(object):
                 print(f"Loaded first signal from {filename}")
             except Exception as e:
                 print(f"Error loading first file: {e}")
+
     def load_second_signal(self):
         # Open the file dialog for the second signal
         filename = askopenfilename(title="Select the second signal file",
@@ -401,8 +412,6 @@ class Ui_MainWindow(object):
                 print(f"Loaded second signal from {filename}")
             except Exception as e:
                 print(f"Error loading second file: {e}")
-
-
 
     def zoom_in_1(self):
         vb = self.Plot1.getViewBox()
@@ -427,7 +436,6 @@ class Ui_MainWindow(object):
     def zoom_out_3(self):
         vb = self.Plot3.getViewBox()
         vb.scaleBy((1.2, 1.2))
-
 
     def link_plots(self):
         if self.is_linked:
@@ -469,7 +477,7 @@ class Ui_MainWindow(object):
        button.setGeometry(QtCore.QRect(x, y, *size))
        button.setStyleSheet(self.getSpeedButtonStyle())
     #    button.clicked.connect(lambda: self.toggleSpeed(button))
-       button.speeds = [0.25, 0.5, 1, 2, 5, 10, 100]
+       button.speeds = [1.0, 1.5, 2.0, 4.0, 8.0, 10.0, 20.0, 0.01, 0.25, 0.5] 
        button.current_speed_index = button.speeds.index(default_speed)
        return button
 
@@ -592,6 +600,7 @@ class Ui_MainWindow(object):
             context_menu = RightClickPopup(
             parent=self.parent,
             selected_signal_data=self.selected_signal_data,
+            main_window=self
         )
             context_menu.exec_(QPoint(int(event.screenPos().x()), int(event.screenPos().y()))) #show the menu at the mouse position 
 
@@ -637,7 +646,6 @@ class Ui_MainWindow(object):
 
             # Perform interpolation based on selected type
             self.perform_interpolation()
-
 
     def plot_selected_region(self, segment):
         if segment is None:
@@ -712,7 +720,33 @@ class Ui_MainWindow(object):
         """ Helper method to get y value for given x value. """
         idx = (np.abs(np.array(x_data) - x_value)).argmin()
         return y_data[idx]
- 
+
+    def swap_signals_between_plots(self):
+        """Swap the signals between Plot1 and Plot2 without resetting the indices."""
+        # Store current indices before the swap
+        current_index1 = self.plot_index1
+        current_index2 = self.plot_index2
+
+        # Swap x and y data of the plots
+        self.x1, self.x2 = self.x2, self.x1
+        self.y1, self.y2 = self.y2, self.y1
+
+        # Clear both plots
+        self.Plot1.clear()
+        self.Plot2.clear()
+
+        # Set the x-axis limits to match the current positions after swap
+        self.Plot1.setXRange(self.x1[0], self.x1[min(current_index1, len(self.x1) - 1)])
+        self.Plot2.setXRange(self.x2[0], self.x2[min(current_index2, len(self.x2) - 1)])
+
+        # Plot the swapped signals starting from their current indices
+        if current_index1 < len(self.x1):
+            self.Plot1.plot(self.x1[current_index1:], self.y1[current_index1:], pen='r', clear=False)
+        if current_index2 < len(self.x2):
+            self.Plot2.plot(self.x2[current_index2:], self.y2[current_index2:], pen='b', clear=False)
+
+        print("Signals swapped between Plot1 and Plot2")
+    
     def initPlots(self):
         # Create two plots using PyQtGraph (shifted 50 pixels down)
         self.Plot1 = pg.PlotWidget(self.centralwidget)
@@ -755,7 +789,6 @@ class Ui_MainWindow(object):
         self.Plot3 = pg.PlotWidget(self.centralwidget)
         self.Plot3.setGeometry(QtCore.QRect(1090, 300, 800, 350))  # Right Plot1
         self.Plot3.setObjectName("Plot3")
-        self.Plot3.setObjectName("Plot1")
         self.Plot3.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
 
         # Example data for plotting
@@ -768,29 +801,51 @@ class Ui_MainWindow(object):
         self.Plot2.enableAutoRange()  # Enable automatic scaling of axes
         self.Plot2.showGrid(x=True, y=True)  # Show grid lines
 
-        self.timer1 = QtCore.QTimer()
-        self.timer1.setInterval(150)  # Adjust the interval as needed
-        self.timer1.timeout.connect(lambda: self.update_plot(1))  # Connect to update_plot for Plot1
         self.timer1.start()
 
-        self.timer2 = QtCore.QTimer()
-        self.timer2.setInterval(150)  # Adjust the interval as needed
-        self.timer2.timeout.connect(lambda: self.update_plot(2))  # Connect to update_plot for Plot2
         self.timer2.start()
 
-         # Initialize plot indices separately for each plot
+        # Initialize plot indices separately for each plot
         self.plot_index1 = 0
         self.plot_index2 = 0
 
-    
+    # Function responsible for play/pause
+    def toggle_play_stop(self, plot_id):
+        if self.play_stop_signals.is_playing(plot_id):
+            self.play_stop_signals.stop_signal(plot_id)
+            self.control_plot(plot_id, start=False)
+        else:
+            self.play_stop_signals.start_signal(plot_id)
+            self.control_plot(plot_id, start=True)
+
+    # Control function for starting/stopping the timer for each plot
+    def control_plot(self, plot_id, start):
+        if start:
+            if plot_id == 1:
+                self.timer1.start()
+                print(f"Plot {plot_id} started.")
+            elif plot_id == 2:
+                self.timer2.start()
+                print(f"Plot {plot_id} started.")
+        else:
+            if plot_id == 1:
+                self.timer1.stop()
+                print(f"Plot {plot_id} stopped.")
+            elif plot_id == 2:
+                self.timer2.stop()
+                print(f"Plot {plot_id} stopped.")
+
     # function responsible for speed
     def toggleSpeed(self, button, plot_id):
-       button.speeds = [1.0, 1.5, 2.0, 4.0, 8.0, 0.25, 0.5] 
        button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
        new_speed = button.speeds[button.current_speed_index]
        button.setText(f"{new_speed}x")
        print(f"Speed set to: {new_speed}x")
-       self.parent.timers[plot_id].setInterval(int(100 / new_speed))
+        # Update the appropriate timer interval
+       if plot_id == 1:
+            self.timer1.setInterval(int(100.0 / new_speed))
+       else:
+            self.timer2.setInterval(int(100.0 / new_speed))
 
     def update_plot(self, plot_id):
         # Update the plot with new data points

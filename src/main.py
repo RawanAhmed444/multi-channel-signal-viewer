@@ -28,16 +28,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.snapshots = []
         self.statistics_data = []
 
-        # Initialize the timers for plot updates
-        self.timers = {
-            1: QtCore.QTimer(),
-            2: QtCore.QTimer()
-        }
-
-        for plot_id, timer in self.timers.items():
-            timer.setInterval(100)
-            timer.timeout.connect(lambda plot_id=plot_id: self.ui.update_plot(plot_id))
-
         # Connect snapshot buttons to functions
         self.ui.Snapshot1.clicked.connect(lambda: self.take_snapshot(self.ui.Plot1, "Plot1"))
         self.ui.Snapshot2.clicked.connect(lambda: self.take_snapshot(self.ui.Plot2, "Plot2"))
@@ -45,10 +35,8 @@ class MainWindow(QtWidgets.QMainWindow):
      
 
         # Connect buttons to the same toggle function
-        self.ui.Play_stop1.clicked.connect(lambda: self.toggle_play_stop(1))
-        self.ui.Play_stop2.clicked.connect(lambda: self.toggle_play_stop(2))
-
-        self.update_timers()
+        self.ui.Play_stop1.clicked.connect(lambda: self.ui.toggle_play_stop(1))
+        self.ui.Play_stop2.clicked.connect(lambda: self.ui.toggle_play_stop(2))
 
         #connect report button to generate the pdf
         self.ui.Report.clicked.connect(self.generate_pdf)
@@ -56,15 +44,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.Speed1.clicked.connect(lambda: self.ui.toggleSpeed(self.ui.Speed1, 1))
         self.ui.Speed2.clicked.connect(lambda: self.ui.toggleSpeed(self.ui.Speed2, 2))
 
-        # Connect plots to select signal
-        self.ui.Plot1.scene().sigMouseClicked.connect(lambda event: self.ui.on_plot_click(event, self.ui.Plot1))
-        self.ui.Plot2.scene().sigMouseClicked.connect(lambda event: self.ui.on_plot_click(event, self.ui.Plot2))
-        
         self.selected_signal_data = None
         self.selected_signal = None
         self.selected_signal_timer = None
 
-    
     # linking this to take_snapshot file
     def take_snapshot(self, plot_widget, plot_name):
         # Get the data from the plot widget
@@ -86,30 +69,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Store snapshot path and statistics
         self.snapshots.append(snapshot_path)
         self.statistics_data.append(stats)
-
-    # function responsible for play_pause 
-    def toggle_play_stop(self, plot_id):
-        if self.play_stop_signals.is_playing(plot_id):
-            self.play_stop_signals.stop_signal(plot_id)
-            self.control_plot(plot_id, start=False)  
-        else:
-            self.play_stop_signals.start_signal(plot_id)
-            self.control_plot(plot_id, start=True) 
-    
-    # function responsible for play_pause and speed
-    def control_plot(self, plot_id, start):
-        if start:
-            self.timers[plot_id].start()
-            print(f"Plot {plot_id} started.")
-        else:
-            self.timers[plot_id].stop()
-            print(f"Plot {plot_id} stopped.")
-
-    # function responsible for play_pause and speed
-    def update_timers(self):
-        for plot_id in self.timers:
-            if self.play_stop_signals.is_playing(plot_id):
-                self.timers[plot_id].start()
 
     def get_plot_data(self, plot_widget):
         items = plot_widget.listDataItems()
