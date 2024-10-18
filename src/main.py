@@ -1,5 +1,6 @@
 import sys 
 import os 
+import numpy as np
 from PyQt5 import QtWidgets
 from ui.main_window import Ui_MainWindow
 from ui.main_window import RightClickPopup
@@ -9,7 +10,7 @@ from PyQt5.QtCore import QPoint, QTimer
 from logic.calculate_stats import calculate_statistics
 from logic.take_snapshot import take_snapshot
 from logic.generate_pdf import generate_pdf
-from logic.move_signals import select_signal, move_selected_signal
+from logic.move_signals import select_signal,  move_signal_between_plots
 from logic.signal_processing import load_signal_from_file
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -20,7 +21,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.play_stop_signals = PlayStopSignals()
-        self.ui = Ui_MainWindow(self.play_stop_signals)
+        self.ui = Ui_MainWindow(self.play_stop_signals,self)
         self.ui.setupUi(self)
 
         #list to store snapshots and statistics
@@ -34,7 +35,7 @@ class MainWindow(QtWidgets.QMainWindow):
         }
 
         for plot_id, timer in self.timers.items():
-            timer.setInterval(150)
+            timer.setInterval(100)
             timer.timeout.connect(lambda plot_id=plot_id: self.ui.update_plot(plot_id))
 
         # Connect snapshot buttons to functions
@@ -56,54 +57,33 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.Speed2.clicked.connect(lambda: self.ui.toggleSpeed(self.ui.Speed2, 2))
 
         # Connect plots to select signal
-        self.ui.Plot1.scene().sigMouseClicked.connect(lambda event: self.on_plot_click(event, self.ui.Plot1))
-        self.ui.Plot2.scene().sigMouseClicked.connect(lambda event: self.on_plot_click(event, self.ui.Plot2))
-
+        self.ui.Plot1.scene().sigMouseClicked.connect(lambda event: self.ui.on_plot_click(event, self.ui.Plot1))
+        self.ui.Plot2.scene().sigMouseClicked.connect(lambda event: self.ui.on_plot_click(event, self.ui.Plot2))
+        
+        self.selected_signal_data = None
         self.selected_signal = None
         self.selected_signal_timer = None
 
-    def on_plot_click(self, event, plot_widget):
-        global selected_signal
-        if event.button() == QtCore.Qt.LeftButton:
-
-            items = plot_widget.listDataItems()
-            if items:
-                # select a signal from the many signals being displayed on the plot
-                for signal in items:
-                    select_signal(plot_widget, signal)
-                    print(f"Selected signal: {signal}") 
-                    break   # Ensure we only select the first one clicked
-
-                x_data, y_data = self.get_plot_data(plot_widget)
-                self.selected_signal_data = y_data  # Store the selected signal data for use in the context menu
-            else:
-                print("No signals available in the plot.")  # Debugging line
-                   
-        elif event.button() == QtCore.Qt.RightButton:
-            source_plot = plot_widget
-            print(f"source plot: {source_plot}")
-            target_plot = self.ui.Plot2 if source_plot == self.ui.Plot1 else self.ui.Plot1
-
-            #pass selected signal data to the context menu
-            context_menu = RightClickPopup(
-            parent=self,
-            selected_signal = selected_signal,
-            selected_signal_data=self.selected_signal_data,
-            source_plot=source_plot,
-            target_plot=target_plot,
-            source_timer=self.timers[1] if source_plot == self.ui.Plot1 else self.timers[2],
-            target_timer=self.timers[2] if target_plot == self.ui.Plot2 else self.timers[1],
-            move_signal=self.move_signal
-        )
-            context_menu.exec_(QPoint(int(event.screenPos().x()), int(event.screenPos().y()))) #show the menu at the mouse position 
-
+    
     # linking this to take_snapshot file
     def take_snapshot(self, plot_widget, plot_name):
-        data = self.get_plot_data(plot_widget)  
-        stats = calculate_statistics(data)     
+        # Get the data from the plot widget
+        x_data, full_y_data = self.get_plot_data(plot_widget)
+
+         # Check if full_y_data is empty
+        if len(full_y_data) == 0:
+            print("Warning: full_y_data is empty.")
+        else:
+            # Calculate statistics using only the full_y_data
+            stats = calculate_statistics(full_y_data)  # Use full_y_data for statistics
+
+            # Print calculated statistics for debugging
+            print(f"Calculated statistics for {plot_name}: {stats}")
+
+        # Take a snapshot and get the path
         snapshot_path = take_snapshot(plot_widget, plot_name=plot_name) 
 
-        # Store snapshot and statistics
+        # Store snapshot path and statistics
         self.snapshots.append(snapshot_path)
         self.statistics_data.append(stats)
 
@@ -131,21 +111,16 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.play_stop_signals.is_playing(plot_id):
                 self.timers[plot_id].start()
 
-    def move_signal(self, source_plot, target_plot, source_timer, target_timer):
-        print("you are now in main.py")
-        move_selected_signal(source_plot, target_plot, source_timer, target_timer)
-
     def get_plot_data(self, plot_widget):
         items = plot_widget.listDataItems()
         full_y_data = []
         x_data = None
-        print("Number of items in plot:", len(items))  # Debugging line
+        print("Number of items in plot:", len(items))   
 
         if items:
             for signal in items: 
                 x_data, y_data = signal.getData()
                 full_y_data.extend(y_data)
-
         return x_data, full_y_data
         
     # linking this to generate_pdf file

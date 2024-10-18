@@ -1,18 +1,20 @@
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QPoint
 import pyqtgraph as pg
 from pyqtgraph import PlotDataItem
 from logic.signal_processing import load_signal_from_file
 import pandas as pd
 import matplotlib.pyplot as plt
 from logic.calculate_stats import calculate_statistics
-from logic.move_signals import move_selected_signal
+from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen
 from PyQt5.QtWidgets import QGraphicsView
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
-
+from scipy import interpolate
+from scipy.interpolate import interp1d
 
 class CustomMessageBox(QtWidgets.QMessageBox):
     def __init__(self, parent=None):
@@ -50,9 +52,9 @@ class CustomMessageBox(QtWidgets.QMessageBox):
         self.layout().addWidget(label, 0, 0, 1, 2)  # Add the label to the layout
 
 class StatisticsPopup(QtWidgets.QDialog):
-    def __init__(self):
-        super(StatisticsPopup, self).__init__()
-        self.popup_menu = RightClickPopup(self)
+    def __init__(self, parent=None):
+        super(StatisticsPopup, self).__init__(parent)
+        # self.popup_menu = RightClickPopup(self)
         self.setStyleSheet("""
             StatisticsPopup {
                 background-color: black;  /* Black background */
@@ -102,24 +104,17 @@ class StatisticsPopup(QtWidgets.QDialog):
 
     def display_statistics(self, selected_signal_stats):
         selected_signal_stats_text = (
-            f"Mean: {selected_signal_stats['mean']:.2f}\n"
-            f"Standard Deviation {selected_signal_stats['std']:.2f}\n"
-            f"Min: {selected_signal_stats['min']:.2f}\n"
-            f"Max: {selected_signal_stats['max']:.2f}\n"
-            f"Duration: {selected_signal_stats['duration']:.2f}\n"
+            f"Mean: {selected_signal_stats['mean']:.5f}\n"
+            f"Standard Deviation {selected_signal_stats['std']:.5f}\n"
+            f"Min: {selected_signal_stats['min']:.5f}\n"
+            f"Max: {selected_signal_stats['max']:.5f}\n"
         )
         self.statsLabel.setText(selected_signal_stats_text)
 
 class RightClickPopup(QtWidgets.QMenu):
-    def __init__(self, parent=None, source_plot=None, selected_signal=None, selected_signal_data=None, target_plot=None, source_timer=None, target_timer=None, move_signal=None):
+    def __init__(self, parent=None, selected_signal_data=None):
         super(RightClickPopup, self).__init__(parent)
         self.selected_signal_data = selected_signal_data
-        self.source_plot = source_plot
-        self.target_plot = target_plot
-        self.source_timer = source_timer 
-        self.target_timer = target_timer  
-        self.move_signal = move_signal
-        self.selected_signal = selected_signal
         self.setStyleSheet("""
             QMenu {
             background-color: #1D1C1C;  /* Dark gray background */
@@ -151,21 +146,10 @@ class RightClickPopup(QtWidgets.QMenu):
         self.addSeparator()
         self.addAction("Hide", self.close)
         self.addSeparator()
-        self.addAction("Move" , self.move_signal_action)
+        self.addAction("Swap" , self.close)
         self.addSeparator()
         self.addAction("Statistics", self.show_statistics)
-
-    def move_signal_action(self):
-        print("Move action triggered")
-        self.hide()  # Hide the context menu
-        if self.source_plot and self.target_plot and self.selected_signal:
-            self.move_signal(self.source_plot, self.target_plot, self.source_timer, self.target_timer)
-
-    def move_signal(self):
-        if self.source_plot and self.target_plot and self.selected_signal:
-            self.hide()
-            move_selected_signal(self.source_plot, self.target_plot, self.source_timer, self.target_timer)
-
+       
     def show_statistics(self):
             self.hide()
             selected_signal_stats = calculate_statistics(self.selected_signal_data)
@@ -173,10 +157,12 @@ class RightClickPopup(QtWidgets.QMenu):
             stats_popup.display_statistics(selected_signal_stats)
             stats_popup.exec_()
         
-    def showEvent(self, event):
+    def showEvent(self, pos):
         cursor_pos = QtGui.QCursor.pos()
         self.move(cursor_pos)
         super(RightClickPopup, self).showEvent(event)
+    
+    
 
 class Ui_MainWindow(object):
 
@@ -194,20 +180,20 @@ class Ui_MainWindow(object):
         
         return x, y
     
-    def __init__(self, play_stop_signals):
+    def __init__(self, play_stop_signals, parent=None):
         super().__init__()
         self.play_stop_signals = play_stop_signals
         self.plot_index = 0  # Initialize plot_index
-        self.parent = None
-
-        # normal_signal = "src\\data\\signals\\ECG_Normal.csv"
-        # self.x1, self.y1 = self.convert_signal_values_to_numeric(normal_signal)
-        
-        # abnormal_signal = "src\\data\\signals\\ECG_Abnormal.csv"
-        # self.x2, self.y2 = self.convert_signal_values_to_numeric(abnormal_signal)
-    
+        self.parent = parent
+        self.rois = []  # List to hold ROIs for selected regions
+        self.region_count = 0  # Track how many regions have been selected (up to 2)
         self.x1, self.y1 = [0], [0]
         self.x2, self.y2 = [0], [0]
+        self.segment1 = None  # Placeholder for the first selected segment
+        self.segment2 = None  # Placeholder for the second selected segment
+        self.last_interpolation_curve = None
+        self.selected_signal_data = None
+        # self.base_distance = 1.0
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -215,6 +201,8 @@ class Ui_MainWindow(object):
         MainWindow.setStyleSheet("background-color: black;")
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
+        print(type(self.centralwidget.children))
+
 
         # Initialize buttons and other UI elements
         self.initButtons()
@@ -271,10 +259,6 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-
-    def slider_value_changed(self, value):
-        print(f"Slider value: {value}")
-        
 
     def initButtons(self):
         # Button configurations (shifted down by 50 pixels)
@@ -382,10 +366,17 @@ class Ui_MainWindow(object):
             border-radius: 12px; 
             }
         """)
-        self.slider.setMinimum(0)
-        self.slider.setMaximum(100)
-        self.slider.setValue(50)
-        self.slider.valueChanged.connect(self.slider_value_changed)
+        self.slider.setMinimum(-10)
+        self.slider.setMaximum(10)
+        self.slider.setValue(0)
+
+        # Connect the slider value change to the corresponding function
+        self.slider.valueChanged.connect(self.update_distance)
+
+        # Add the radio buttons to the button initialization if not done yet
+        self.radioLinear.toggled.connect(self.perform_interpolation)
+        self.radioQuadratic.toggled.connect(self.perform_interpolation)
+        self.radioCubic.toggled.connect(self.perform_interpolation)
 
     
     def load_first_signal(self):
@@ -477,16 +468,10 @@ class Ui_MainWindow(object):
        button = QtWidgets.QPushButton(f"{default_speed}x", self.centralwidget)
        button.setGeometry(QtCore.QRect(x, y, *size))
        button.setStyleSheet(self.getSpeedButtonStyle())
-       button.clicked.connect(lambda: self.toggleSpeed(button))
+    #    button.clicked.connect(lambda: self.toggleSpeed(button))
        button.speeds = [0.25, 0.5, 1, 2, 5, 10, 100]
        button.current_speed_index = button.speeds.index(default_speed)
        return button
-
-    def toggleSpeed(self, button):
-       button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
-       new_speed = button.speeds[button.current_speed_index]
-       button.setText(f"{new_speed}x")
-       print(f"Speed set to: {new_speed}x")
 
     def createToggleButton(self, icon1_path, icon2_path, x, y, size=(50, 50)):
         button = QtWidgets.QPushButton(self.centralwidget)
@@ -559,14 +544,175 @@ class Ui_MainWindow(object):
             "    color: #ffffff;                 /* White text when pressed */\n"
             "}\n"
         )
-    
-    def plotRightClicked(self, event):
-      if event.button() == QtCore.Qt.RightButton:
-        # Display the right-click popup
-        right_click_popup = RightClickPopup()
-        right_click_popup.exec_()
 
-    
+    def update_distance(self, value):
+        # Calculate distance based on the slider value
+        distance = value 
+
+        # Ensure there are two segments before proceeding
+        if hasattr(self, 'segments') and len(self.segments) == 2:
+            segment1 = self.segments[0]
+            segment2 = self.segments[1]
+
+            x1_min, x1_max, plot = segment1  # Only one plot
+            x2_min, x2_max, _ = segment2  # The same plot, so no need to check
+
+            # Update the second segment's minimum x value based on the distance
+            new_x2_min = x1_max + distance  # Move the second segment away from the first
+
+            # Update the second segment with the new minimum x value
+            self.segments[1] = (new_x2_min, x2_max, plot)
+
+            # Clear Plot3 and redraw segments and interpolation
+            self.plot_selected_regions_on_plot3()
+
+    def plotRightClicked(self, event, plot):
+        if event.button() == QtCore.Qt.RightButton:
+           self.on_plot_click(event, plot)
+        elif event.button() == QtCore.Qt.LeftButton:
+            # Left-click: Enable region selection or any other action you want
+            self.select_region(plot, event)
+
+    def on_plot_click(self, event, plot_widget):
+        full_y_data = []
+        x_data = None
+        # if event.button() == QtCore.Qt.LeftButton:
+        items = plot_widget.listDataItems()
+        print("Number of items in plot:", len(items))   
+        if items:
+            for signal in items: 
+                x_data, y_data = signal.getData()
+                full_y_data.extend(y_data)  # Collect all y_data in a flat list
+
+        # Convert full_y_data to a NumPy array if necessary
+        full_y_data = np.array(full_y_data)
+        self.selected_signal_data = full_y_data
+        if event.button() == QtCore.Qt.RightButton:
+            #pass selected signal data to the context menu
+            context_menu = RightClickPopup(
+            parent=self.parent,
+            selected_signal_data=self.selected_signal_data,
+        )
+            context_menu.exec_(QPoint(int(event.screenPos().x()), int(event.screenPos().y()))) #show the menu at the mouse position 
+
+
+    def select_region(self, plot, event):
+        mouse_point = plot.getViewBox().mapSceneToView(event.scenePos())
+        x_pos = mouse_point.x()
+
+        if not hasattr(self, 'region_start'):
+            # First left-click: Start region selection
+            self.region_start = x_pos
+            self.selection_rect = pg.LinearRegionItem([self.region_start, self.region_start], pen='b', brush=(100, 100, 255, 50))  # Light blue box
+            plot.addItem(self.selection_rect)
+        else:
+            # Second left-click: End region selection
+            self.region_end = x_pos
+            self.selection_rect.setRegion([self.region_start, self.region_end])
+
+            # Store the selected region
+            if not hasattr(self, 'segments'):
+                self.segments = []  # Initialize list if it doesn't exist
+
+            # Store the new segment
+            self.segments.append((self.region_start, self.region_end, plot))  # Store the source plot
+
+            # Plot all selected segments on Plot3
+            self.plot_selected_regions_on_plot3()
+
+            # Remove the selection rectangle after plotting
+            plot.removeItem(self.selection_rect)
+
+            # Reset the region selection for the next region
+            del self.region_start, self.region_end
+
+    def plot_selected_regions_on_plot3(self):
+        # Clear Plot3 before plotting
+        self.Plot3.clear()
+
+        # Ensure segments exist before plotting
+        if hasattr(self, 'segments'):
+            for segment in self.segments:
+                self.plot_selected_region(segment)  # Plot each segment
+
+            # Perform interpolation based on selected type
+            self.perform_interpolation()
+
+
+    def plot_selected_region(self, segment):
+        if segment is None:
+            return  # Avoid unpacking if the segment is None
+
+        x_min, x_max, source_plot = segment  # Unpack the segment and source plot
+        x_data = self.x1 if source_plot == self.Plot1 else self.x2
+        y_data = self.y1 if source_plot == self.Plot1 else self.y2
+
+        # Get indices for the selected region, ensuring they are within bounds
+        start_index = max(0, (np.abs(np.array(x_data) - x_min)).argmin())
+        end_index = min(len(x_data) - 1, (np.abs(np.array(x_data) - x_max)).argmin() + 1)
+
+        # Extract data points for the selected region
+        selected_x = x_data[start_index:end_index]
+        selected_y = y_data[start_index:end_index]
+
+        # Plot the selected region on Plot3
+        self.Plot3.plot(selected_x, selected_y, pen='b')  # Plot selected segment in blue
+
+    def perform_interpolation(self):
+        # Remove the last interpolation curve if it exists
+        if self.last_interpolation_curve is not None:
+            self.Plot3.removeItem(self.last_interpolation_curve)
+        # Check if we have exactly two segments
+        if len(self.segments) == 2:
+            segment1, segment2 = self.segments
+            x1_min, x1_max, plot = segment1  # Only one plot
+            x2_min, x2_max, _ = segment2  # The same plot, so no need to check
+
+            # Prepare x values for interpolation
+            x_values = [x1_max, x2_min]  # Last point of the first segment and first point of the second segment
+
+            # Get y values corresponding to x values
+            y_values = [
+                self.get_y_value_for_x(self.x1 if plot == self.Plot1 else self.x2,
+                                        self.y1 if plot == self.Plot1 else self.y2, x1_max),  # Last point of first segment
+                self.get_y_value_for_x(self.x1 if plot == self.Plot1 else self.x2,
+                                        self.y1 if plot == self.Plot1 else self.y2, x2_min)   # First point of second segment
+            ]
+
+            # Determine the interpolation type
+            if self.radioLinear.isChecked():
+                # For linear interpolation, connect the last point of the first segment to the first point of the second segment
+                x_interp = np.linspace(x1_max, x2_min, num=100)  # Interpolating between these two points
+                y_interp = np.interp(x_interp, x_values, y_values)
+
+            elif self.radioQuadratic.isChecked():
+                # For quadratic interpolation, we only need three points
+                if len(x_values) >= 3:
+                    coeffs = np.polyfit(x_values[:3], y_values + [self.get_y_value_for_x(self.x1 if plot1 == self.Plot1 else self.x2,
+                                                                                        self.y1 if plot1 == self.Plot1 else self.y2, x2_min)], 2)
+                else:
+                    coeffs = np.polyfit(x_values, y_values, 2)
+                poly_func = np.poly1d(coeffs)
+                x_interp = np.linspace(min(x_values), max(x_values), num=100)
+                y_interp = poly_func(x_interp)
+
+            elif self.radioCubic.isChecked():
+                # For cubic interpolation, we need at least four points
+                if len(x_values) == 4:
+                    coeffs = np.polyfit(x_values, y_values, 3)
+                else:
+                    coeffs = np.polyfit(x_values, y_values, 2)  # Fallback to quadratic if not enough points
+                poly_func = np.poly1d(coeffs)
+                x_interp = np.linspace(min(x_values), max(x_values), num=100)
+                y_interp = poly_func(x_interp)
+            
+            self.last_interpolation_curve = self.Plot3.plot(x_interp, y_interp, pen='r')  # Red pen for interpolation curve
+
+    def get_y_value_for_x(self, x_data, y_data, x_value):
+        """ Helper method to get y value for given x value. """
+        idx = (np.abs(np.array(x_data) - x_value)).argmin()
+        return y_data[idx]
+ 
     def initPlots(self):
         # Create two plots using PyQtGraph (shifted 50 pixels down)
         self.Plot1 = pg.PlotWidget(self.centralwidget)
@@ -583,7 +729,7 @@ class Ui_MainWindow(object):
         self.Plot1.setXRange(0, signal1_time_length)  # Set x-axis limits from 0 to 10
         self.Plot1.setYRange(0, signal1_value_length)  # Set y-axis limits from 0 to 100
         self.Plot1.setObjectName("Plot1")
-        self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        self.Plot1.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot1))  # Connect mouse click to the plot
 
 
         # Set axis labels
@@ -636,14 +782,15 @@ class Ui_MainWindow(object):
         self.plot_index1 = 0
         self.plot_index2 = 0
 
-    #function responsible for speed
+    
+    # function responsible for speed
     def toggleSpeed(self, button, plot_id):
-       button.speeds = [1.0, 1.5, 2.0,4.0,8.0, 0.25, 0.5] 
+       button.speeds = [1.0, 1.5, 2.0, 4.0, 8.0, 0.25, 0.5] 
        button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
        new_speed = button.speeds[button.current_speed_index]
        button.setText(f"{new_speed}x")
        print(f"Speed set to: {new_speed}x")
-       self.parent.timers[plot_id].setInterval(int(150 / new_speed))
+       self.parent.timers[plot_id].setInterval(int(100 / new_speed))
 
     def update_plot(self, plot_id):
         # Update the plot with new data points
@@ -667,23 +814,24 @@ class Ui_MainWindow(object):
                     plt.pause(0.01)  # Adjust the pause time for animation speed
  
         if plot_id == 2 and self.play_stop_signals.is_playing(plot_id):     
-            if self.plot_index2 < len(self.x2):
-                next_x = self.x2[self.plot_index2]
-                next_y = self.y2[self.plot_index2]
-                self.plot_index2 += 1
-                
-                # Calculate the start and end indices for the dynamic time window
-                start_index = max(self.plot_index2 - 200, 0)  # Adjust the window size as needed
-                end_index = self.plot_index2
+                if self.plot_index2 < len(self.x2):
+                    next_x = self.x2[self.plot_index2]
+                    next_y = self.y2[self.plot_index2]
+                    self.plot_index2 += 1
+                    
+                    # Calculate the start and end indices for the dynamic time window
+                    start_index = max(self.plot_index2 - 200, 0)  # Adjust the window size as needed
+                    end_index = self.plot_index2
 
-                # Update the plot with the dynamic time window
-                self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=False)
+                    # Update the plot with the dynamic time window
+                    self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=False)
+            
+                    # Set the x-axis limits to match the current time window
+                    self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
 
-                # Set the x-axis limits to match the current time window
-                self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
+                    plt.pause(0.01)  # Adjust the pause time for animation speed
 
-                plt.pause(0.01)  # Adjust the pause time for animation speed
-
+   
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
