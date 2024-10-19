@@ -162,20 +162,18 @@ class Ui_MainWindow(object):
 
         # Initialize the normal signal file and its axis
         normal_signal = "src\\data\\signals\\ECG_Normal.csv"
-        self.x1, self.y1 = convert_signal_values_to_numeric(normal_signal)
+        self.x1, self.y1 = convert_signal_values_to_numeric(normal_signal, 0, 1)
         
         # Initialize the abnormal signal file and its axis
         abnormal_signal = "src\\data\\signals\\ECG_Abnormal.csv"
-        self.x2, self.y2 = convert_signal_values_to_numeric(abnormal_signal)
+        self.x2, self.y2 = convert_signal_values_to_numeric(abnormal_signal, 0, 1)
         
         # Initialize the non rectangle signal file and its axis
         non_rectangle_signal = "src\\data\\signals\\radar.csv"
-        self.x4, self.y4= cartesian_to_polar(non_rectangle_signal)
+        self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 1, 2)
         
-        # # Initialize data list for the real-time data points
-        # self.data = []
-        # time_stamp, price = update_real_time_data()
-        # self.data.append([time_stamp, price])
+        # Initialize list to append real-time data
+        self.data = []
         
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -394,22 +392,21 @@ class Ui_MainWindow(object):
         # Set axis labels
         self.Plot3.setLabel('bottom', "Time (s)")
         self.Plot3.setLabel('left', "Real Time Signal")
+        self.curve = self.Plot3.plot()
 
          # Initiate graph 4 for non-rectangle signal
         self.Plot4 = pg.PlotWidget(self.centralwidget, polar=True)
         self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  
         self.Plot4.setObjectName("Plot4")
         # self.Plot4.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
-        signal4_time_length = len(self.x4)
-        signal4_value1_length = len(self.y4)
-        # Set x and y limits 
-        self.Plot4.setXRange(0, signal4_time_length)  
-        self.Plot4.setYRange(0, signal4_value1_length)  
-        # Set axis labels
+        
+        # # Set axis limits (optional)
+        # self.Plot4.setXRange(0, 360)
+        # self.Plot4.setYRange(0, 2)
+
         self.Plot4.setLabel('bottom', "Theta")
         self.Plot4.setLabel('left', "Angle")
-
-
+        
         self.plotData()
 
     def plotData(self):
@@ -437,7 +434,7 @@ class Ui_MainWindow(object):
         # Create a timer to update the plot dynamically
         self.timer = QtCore.QTimer()
         # Adjust the interval as needed
-        self.timer.setInterval(150)  
+        self.timer.setInterval(1000)  
         self.timer.timeout.connect(self.update_plot)
         self.timer.start()
 
@@ -455,16 +452,14 @@ class Ui_MainWindow(object):
         
         # Update the plot with new data points for normal signal
         if self.plot_index < len(self.x1):
-            next_x = self.x1[self.plot_index]
-            next_y = self.y1[self.plot_index]
             self.plot_index += 1
 
             # Calculate the start and end indices for the dynamic time window
-            start_index = max(self.plot_index - 200, 0)  # Adjust the window size as needed
+            start_index = max(self.plot_index - 200, 0) 
             end_index = self.plot_index
 
             # Update the plot with the dynamic time window
-            self.Plot1.plot(self.x1[start_index:end_index], self.y1[start_index:end_index], pen='r', clear=True)
+            self.Plot1.plot(self.x1[start_index:end_index], self.y1[start_index:end_index], pen='r', clear=False)
 
             # Set the x-axis limits to match the current time window
             self.Plot1.setXRange(self.x1[start_index], self.x1[end_index])
@@ -474,47 +469,59 @@ class Ui_MainWindow(object):
             
         # Update the plot with new data points for abnormal signal    
         if self.plot_index < len(self.x2):
-            next_x = self.x2[self.plot_index]
-            next_y = self.y2[self.plot_index]
             self.plot_index += 1
               
             # Calculate the start and end indices for the dynamic time window
-            start_index = max(self.plot_index - 200, 0)  # Adjust the window size as needed
+            start_index = max(self.plot_index - 200, 0)  
             end_index = self.plot_index
 
             # Update the plot with the dynamic time window
-            self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=True)
+            self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=False)
 
             # Set the x-axis limits to match the current time window
             self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
 
             # Adjust the pause time for animation speed
             plt.pause(0.01)  
+
+        # Update real-time plot
+        self.update_real_time_plot()
+
+        # Update non-rectangle plot
+        self.update_non_rectangle_plot()
+        
+    def update_real_time_plot(self):
+        # Get new data point
+        timestamp, price = update_real_time_data()
+
+        # Add new data point to list
+        self.data.append((timestamp, price))
+
+        # Update the curve with all data points
+        self.curve.setData(x=[d[0] for d in self.data], y=[d[1] for d in self.data])
+
+        # Limit the number of data points for performance
+        if len(self.data) > 50:
+            self.data = self.data[-50:]
             
-        # Update the plot with new data points for non-rectangle signal    
+    def update_non_rectangle_plot(self):
+        # Update the plot with new data points for non-rectangle signal
         if self.plot_index < len(self.x4):
-            next_x = self.x4[self.plot_index]
-            next_y = self.y4[self.plot_index]
             self.plot_index += 1
-              
+
             # Calculate the start and end indices for the dynamic time window
-            start_index = max(self.plot_index - 200, 0)  # Adjust the window size as needed
+            start_index = max(self.plot_index - 200, 0)  
             end_index = self.plot_index
+            
+            # Calculate theta (angle) and radial distance (r)
+            theta = np.arctan2(self.y4[start_index:end_index], self.x4[start_index:end_index])
+            r = np.sqrt(self.x4[start_index:end_index]**2 + self.y4[start_index:end_index]**2)
 
-            # Update the plot with the dynamic time window
-            self.Plot4.plot(self.x4[start_index:end_index], self.y4[start_index:end_index], pen='y', clear=True)
-
-            # Set the x-axis limits to match the current time window
-            self.Plot4.setXRange(self.x4[start_index], self.x4[end_index])
-
+            # Update the plot with polar coordinates
+            self.Plot4.plot(theta, r, pen='y', clear=False)
             # Adjust the pause time for animation speed
-            plt.pause(0.01)  
-
-        # # Extract timestamps and prices for plotting
-        # timestamps = [x[0] for x in self.data]
-        # prices = [x[1] for x in self.data]
-        # self.Plot3.plot(x=timestamps, y=prices, pen='y')
-
+            plt.pause(0.01)
+            
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))

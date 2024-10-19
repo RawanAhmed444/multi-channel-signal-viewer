@@ -50,7 +50,7 @@ def update_real_time_data(stock_code="ADA-USD"):
         price = float(get_real_time_signal(stock_code))
     except ValueError:
         print("Error converting price to float")
-        price = np.nan  # Use NaN for invalid price data
+        price = np.nan  
 
     return time_in_seconds, price
 
