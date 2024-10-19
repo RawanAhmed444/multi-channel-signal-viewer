@@ -53,20 +53,14 @@ class MainWindow(QtWidgets.QMainWindow):
         # Get the data from the plot widget
         x_data, full_y_data = self.get_plot_data(plot_widget)
 
-         # Check if full_y_data is empty
         if len(full_y_data) == 0:
             print("Warning: full_y_data is empty.")
         else:
-            # Calculate statistics using only the full_y_data
-            stats = calculate_statistics(full_y_data)  # Use full_y_data for statistics
+            stats = calculate_statistics(full_y_data)
 
-            # Print calculated statistics for debugging
             print(f"Calculated statistics for {plot_name}: {stats}")
 
-        # Take a snapshot and get the path
         snapshot_path = take_snapshot(plot_widget, plot_name=plot_name) 
-
-        # Store snapshot path and statistics
         self.snapshots.append(snapshot_path)
         self.statistics_data.append(stats)
 
@@ -79,7 +73,11 @@ class MainWindow(QtWidgets.QMainWindow):
         if items:
             for signal in items: 
                 x_data, y_data = signal.getData()
-                full_y_data.extend(y_data)
+                if y_data is not None:
+                    full_y_data.extend(y_data)
+                else:
+                    print("Warning: y_data is None for one of the signals.")
+
         return x_data, full_y_data
         
     # linking this to generate_pdf file

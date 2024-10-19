@@ -18,10 +18,10 @@ def generate_pdf(snapshots, statistics_data, file_name):
         for page in range(total_pages):
             fig, axs = plt.subplots(images_per_column, images_per_row, figsize=(8, 10))
             axs = axs.flatten()
-            plt.subplots_adjust(top=0.92, bottom=0.1, left=0.1, right=0.9, hspace=0.4)
+            plt.subplots_adjust(top=0.88, bottom=0.12, left=0.1, right=0.9, hspace=0.25)
 
             if page == 0:
-                plt.figtext(0.5, 0.98, 'Snapshot Collection', fontsize=20, ha='center', va='top', fontweight='bold')
+                plt.figtext(0.5, 0.95, 'Snapshot Collection', fontsize=20, ha='center', va='top', fontweight='bold')
 
             for i in range(images_per_row * images_per_column):
                 index = page * images_per_row * images_per_column + i
@@ -46,7 +46,7 @@ def generate_pdf(snapshots, statistics_data, file_name):
                     ]
                     
                     axs[i].table(cellText=table_data, colWidths=[0.2, 0.2], cellLoc='center',
-                                 loc='bottom', bbox=[0.0, -0.5, 1, 0.4])  # Adjust position with bbox
+                                 loc='bottom', bbox=[0.0, -0.35, 1, 0.3])  # Adjust position with bbox
                 else:
                     axs[i].axis('off')  # Hide any empty subplot areas
 

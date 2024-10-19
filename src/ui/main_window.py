@@ -54,7 +54,6 @@ class CustomMessageBox(QtWidgets.QMessageBox):
 class StatisticsPopup(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super(StatisticsPopup, self).__init__(parent)
-        # self.popup_menu = RightClickPopup(self)
         self.setStyleSheet("""
             StatisticsPopup {
                 background-color: black;  /* Black background */
@@ -191,25 +190,24 @@ class Ui_MainWindow(object):
     def __init__(self, play_stop_signals, parent=None):
         super().__init__()
         self.play_stop_signals = play_stop_signals
-        self.plot_index = 0  # Initialize plot_index
+        self.plot_index = 0  
         self.parent = parent
-        self.rois = []  # List to hold ROIs for selected regions
-        self.region_count = 0  # Track how many regions have been selected (up to 2)
+        self.rois = []  
+        self.region_count = 0
         self.x1, self.y1 = [0], [0]
         self.x2, self.y2 = [0], [0]
-        self.segment1 = None  # Placeholder for the first selected segment
-        self.segment2 = None  # Placeholder for the second selected segment
+        self.segment1 = None  
+        self.segment2 = None  
         self.last_interpolation_curve = None
         self.selected_signal_data = None
 
         self.timer1 = QtCore.QTimer()
-        self.timer1.setInterval(150)  # Adjust the interval as needed
-        self.timer1.timeout.connect(lambda: self.update_plot(1))  # Connect to update_plot for Plot1
+        self.timer1.setInterval(150) 
+        self.timer1.timeout.connect(lambda: self.update_plot(1))  
 
         self.timer2 = QtCore.QTimer()
-        self.timer2.setInterval(150)  # Adjust the interval as needed
-        self.timer2.timeout.connect(lambda: self.update_plot(2))  # Connect to update_plot for Plot2
-
+        self.timer2.setInterval(150)  
+        self.timer2.timeout.connect(lambda: self.update_plot(2))  
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -286,7 +284,6 @@ class Ui_MainWindow(object):
         self.ZoomOut1 = self.createButtonWithIcon("src/data/Images/Zoom out.png", 850, 440, ) # Left Zoom Out button
         self.Snapshot1 = self.createButtonWithIcon("src/data/Images/Snapshot.png", 930, 440, )     # Left SS button
 
-      # self.GlueButton = self.createButton("Glue", 1,1)
         self.Signal1.clicked.connect(self.load_first_signal)
         self.ZoomIn1.clicked.connect(self.zoom_in_1)
         self.ZoomOut1.clicked.connect(self.zoom_out_1)
@@ -300,7 +297,6 @@ class Ui_MainWindow(object):
         self.ZoomOut2 = self.createButtonWithIcon("src/data/Images/Zoom out.png", 850, 900, ) # Left Zoom Out button
         self.Snapshot2 = self.createButtonWithIcon("src/data/Images/Snapshot.png", 930, 900, )     # Left SS button for second plot
         
-        # self.GlueButton = self.createButton("Glue", 1,1)
         self.Signal2.clicked.connect(self.load_second_signal)
         self.ZoomIn2.clicked.connect(self.zoom_in_2)
         self.ZoomOut2.clicked.connect(self.zoom_out_2)
@@ -376,14 +372,13 @@ class Ui_MainWindow(object):
             border-radius: 12px; 
             }
         """)
-        self.slider.setMinimum(-10)
-        self.slider.setMaximum(10)
-        self.slider.setValue(0)
+        self.slider.setMinimum(-2)
+        self.slider.setMaximum(4)
+        self.slider.setValue(2)
 
         # Connect the slider value change to the corresponding function
         self.slider.valueChanged.connect(self.update_distance)
 
-        # Add the radio buttons to the button initialization if not done yet
         self.radioLinear.toggled.connect(self.perform_interpolation)
         self.radioQuadratic.toggled.connect(self.perform_interpolation)
         self.radioCubic.toggled.connect(self.perform_interpolation)
@@ -476,8 +471,7 @@ class Ui_MainWindow(object):
        button = QtWidgets.QPushButton(f"{default_speed}x", self.centralwidget)
        button.setGeometry(QtCore.QRect(x, y, *size))
        button.setStyleSheet(self.getSpeedButtonStyle())
-    #    button.clicked.connect(lambda: self.toggleSpeed(button))
-       button.speeds = [1.0, 1.5, 2.0, 4.0, 8.0, 10.0, 20.0, 0.01, 0.25, 0.5] 
+       button.speeds = [1.0, 1.5, 2.0, 8.0, 0.25, 0.5] 
        button.current_speed_index = button.speeds.index(default_speed)
        return button
 
@@ -554,49 +548,47 @@ class Ui_MainWindow(object):
         )
 
     def update_distance(self, value):
-        # Calculate distance based on the slider value
+
         distance = value 
 
-        # Ensure there are two segments before proceeding
         if hasattr(self, 'segments') and len(self.segments) == 2:
             segment1 = self.segments[0]
             segment2 = self.segments[1]
 
-            x1_min, x1_max, plot = segment1  # Only one plot
-            x2_min, x2_max, _ = segment2  # The same plot, so no need to check
+            x1_min, x1_max, plot = segment1  
+            x2_min, x2_max, _ = segment2  
 
             # Update the second segment's minimum x value based on the distance
-            new_x2_min = x1_max + distance  # Move the second segment away from the first
+            new_x2_min = x1_max + distance  
+            new_x2_max = new_x2_min + (x2_max - x2_min)
+            new_x2_min = max(new_x2_min, x1_min - 1) 
+            new_x2_max = new_x2_min + (x2_max - x2_min) 
 
-            # Update the second segment with the new minimum x value
-            self.segments[1] = (new_x2_min, x2_max, plot)
-
-            # Clear Plot3 and redraw segments and interpolation
+            self.segments[1] = (new_x2_min, new_x2_max, plot)
             self.plot_selected_regions_on_plot3()
 
     def plotRightClicked(self, event, plot):
         if event.button() == QtCore.Qt.RightButton:
            self.on_plot_click(event, plot)
         elif event.button() == QtCore.Qt.LeftButton:
-            # Left-click: Enable region selection or any other action you want
             self.select_region(plot, event)
 
     def on_plot_click(self, event, plot_widget):
         full_y_data = []
         x_data = None
-        # if event.button() == QtCore.Qt.LeftButton:
         items = plot_widget.listDataItems()
         print("Number of items in plot:", len(items))   
         if items:
             for signal in items: 
                 x_data, y_data = signal.getData()
-                full_y_data.extend(y_data)  # Collect all y_data in a flat list
+                if y_data is not None:
+                    full_y_data.extend(y_data)
+                else:
+                    print("Warning: y_data is None for one of the signals.")
 
-        # Convert full_y_data to a NumPy array if necessary
         full_y_data = np.array(full_y_data)
         self.selected_signal_data = full_y_data
         if event.button() == QtCore.Qt.RightButton:
-            #pass selected signal data to the context menu
             context_menu = RightClickPopup(
             parent=self.parent,
             selected_signal_data=self.selected_signal_data,
@@ -619,9 +611,8 @@ class Ui_MainWindow(object):
             self.region_end = x_pos
             self.selection_rect.setRegion([self.region_start, self.region_end])
 
-            # Store the selected region
             if not hasattr(self, 'segments'):
-                self.segments = []  # Initialize list if it doesn't exist
+                self.segments = [] 
 
             # Store the new segment
             self.segments.append((self.region_start, self.region_end, plot))  # Store the source plot
@@ -636,22 +627,20 @@ class Ui_MainWindow(object):
             del self.region_start, self.region_end
 
     def plot_selected_regions_on_plot3(self):
-        # Clear Plot3 before plotting
+
         self.Plot3.clear()
 
-        # Ensure segments exist before plotting
         if hasattr(self, 'segments'):
             for segment in self.segments:
-                self.plot_selected_region(segment)  # Plot each segment
+                self.plot_selected_region(segment) 
 
-            # Perform interpolation based on selected type
             self.perform_interpolation()
 
     def plot_selected_region(self, segment):
         if segment is None:
-            return  # Avoid unpacking if the segment is None
+            return 
 
-        x_min, x_max, source_plot = segment  # Unpack the segment and source plot
+        x_min, x_max, source_plot = segment 
         x_data = self.x1 if source_plot == self.Plot1 else self.x2
         y_data = self.y1 if source_plot == self.Plot1 else self.y2
 
@@ -666,17 +655,31 @@ class Ui_MainWindow(object):
         # Plot the selected region on Plot3
         self.Plot3.plot(selected_x, selected_y, pen='b')  # Plot selected segment in blue
 
+        #  # Check for overlap with the previously plotted segments
+        # overlap = False
+        # for existing_segment in self.segments:
+        #     existing_x_min, existing_x_max, _ = existing_segment
+        #     if not (x_max < existing_x_min or x_min > existing_x_max):  # Check for overlap
+        #         print("overlap happened")
+        #         overlap = True
+        #         break
+
+        # # Plot the selected region on Plot3 with different styles based on overlap
+        # if overlap:
+        #     # Use a different color (like a light blue) for overlapping segments
+        #     self.Plot3.plot(selected_x, selected_y, pen='b', brush=(100, 100, 255, 150))  # Light blue box for overlap
+        # else:
+        #     # Normal color for non-overlapping segments
+        #     self.Plot3.plot(selected_x, selected_y, pen='b')  # Plot selected segment in blue
+
     def perform_interpolation(self):
-        # Remove the last interpolation curve if it exists
         if self.last_interpolation_curve is not None:
             self.Plot3.removeItem(self.last_interpolation_curve)
-        # Check if we have exactly two segments
         if len(self.segments) == 2:
             segment1, segment2 = self.segments
-            x1_min, x1_max, plot = segment1  # Only one plot
-            x2_min, x2_max, _ = segment2  # The same plot, so no need to check
+            x1_min, x1_max, plot = segment1  
+            x2_min, x2_max, _ = segment2  
 
-            # Prepare x values for interpolation
             x_values = [x1_max, x2_min]  # Last point of the first segment and first point of the second segment
 
             # Get y values corresponding to x values
@@ -689,12 +692,10 @@ class Ui_MainWindow(object):
 
             # Determine the interpolation type
             if self.radioLinear.isChecked():
-                # For linear interpolation, connect the last point of the first segment to the first point of the second segment
-                x_interp = np.linspace(x1_max, x2_min, num=100)  # Interpolating between these two points
+                x_interp = np.linspace(x1_max, x2_min, num=100) 
                 y_interp = np.interp(x_interp, x_values, y_values)
 
             elif self.radioQuadratic.isChecked():
-                # For quadratic interpolation, we only need three points
                 if len(x_values) >= 3:
                     coeffs = np.polyfit(x_values[:3], y_values + [self.get_y_value_for_x(self.x1 if plot1 == self.Plot1 else self.x2,
                                                                                         self.y1 if plot1 == self.Plot1 else self.y2, x2_min)], 2)
@@ -705,24 +706,23 @@ class Ui_MainWindow(object):
                 y_interp = poly_func(x_interp)
 
             elif self.radioCubic.isChecked():
-                # For cubic interpolation, we need at least four points
                 if len(x_values) == 4:
                     coeffs = np.polyfit(x_values, y_values, 3)
                 else:
-                    coeffs = np.polyfit(x_values, y_values, 2)  # Fallback to quadratic if not enough points
+                    coeffs = np.polyfit(x_values, y_values, 2) 
                 poly_func = np.poly1d(coeffs)
                 x_interp = np.linspace(min(x_values), max(x_values), num=100)
                 y_interp = poly_func(x_interp)
             
-            self.last_interpolation_curve = self.Plot3.plot(x_interp, y_interp, pen='r')  # Red pen for interpolation curve
+            self.last_interpolation_curve = self.Plot3.plot(x_interp, y_interp, pen='r') 
 
     def get_y_value_for_x(self, x_data, y_data, x_value):
-        """ Helper method to get y value for given x value. """
+        
         idx = (np.abs(np.array(x_data) - x_value)).argmin()
         return y_data[idx]
 
     def swap_signals_between_plots(self):
-        """Swap the signals between Plot1 and Plot2 without resetting the indices."""
+    
         # Store current indices before the swap
         current_index1 = self.plot_index1
         current_index2 = self.plot_index2
@@ -731,7 +731,6 @@ class Ui_MainWindow(object):
         self.x1, self.x2 = self.x2, self.x1
         self.y1, self.y2 = self.y2, self.y1
 
-        # Clear both plots
         self.Plot1.clear()
         self.Plot2.clear()
 
@@ -748,9 +747,8 @@ class Ui_MainWindow(object):
         print("Signals swapped between Plot1 and Plot2")
     
     def initPlots(self):
-        # Create two plots using PyQtGraph (shifted 50 pixels down)
         self.Plot1 = pg.PlotWidget(self.centralwidget)
-        self.Plot1.setGeometry(QtCore.QRect(180, 70, 800, 350))  # Shifted from 20 to 70
+        self.Plot1.setGeometry(QtCore.QRect(180, 70, 800, 350)) 
         self.Plot1.setObjectName("Plot1")
 
         signal1_time_length = len(self.x1)
@@ -759,25 +757,20 @@ class Ui_MainWindow(object):
         signal2_time_length = len(self.x2)
         signal2_value_length = len(self.y2)
         
-        #Set x and y limits (adjust as needed)
         self.Plot1.setXRange(0, signal1_time_length)  # Set x-axis limits from 0 to 10
         self.Plot1.setYRange(0, signal1_value_length)  # Set y-axis limits from 0 to 100
         self.Plot1.setObjectName("Plot1")
         self.Plot1.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot1))  # Connect mouse click to the plot
 
-
         # Set axis labels
         self.Plot1.setLabel('bottom', "Time (s)")
         self.Plot1.setLabel('left', "Normal Signal")
 
-        # Increase the y-coordinate for the second plot
         self.Plot2 = pg.PlotWidget(self.centralwidget)
-        self.Plot2.setGeometry(QtCore.QRect(180, 530, 800, 350))  # Shifted from 340 to 390
+        self.Plot2.setGeometry(QtCore.QRect(180, 530, 800, 350))
         self.Plot2.setObjectName("Plot2")
-        self.Plot2.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        self.Plot2.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot2))  # Connect mouse click to the plot
 
-
-        # Set x and y limits (adjust as needed)
         self.Plot2.setXRange(0, signal2_time_length)  # Set x-axis limits from 0 to 10
         self.Plot2.setYRange(0, signal2_value_length)  # Set y-axis limits from 0 to 100
 
@@ -789,7 +782,7 @@ class Ui_MainWindow(object):
         self.Plot3 = pg.PlotWidget(self.centralwidget)
         self.Plot3.setGeometry(QtCore.QRect(1090, 300, 800, 350))  # Right Plot1
         self.Plot3.setObjectName("Plot3")
-        self.Plot3.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        self.Plot3.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot3))  # Connect mouse click to the plot
 
         # Example data for plotting
         self.plotData()
@@ -802,7 +795,6 @@ class Ui_MainWindow(object):
         self.Plot2.showGrid(x=True, y=True)  # Show grid lines
 
         self.timer1.start()
-
         self.timer2.start()
 
         # Initialize plot indices separately for each plot
@@ -837,56 +829,55 @@ class Ui_MainWindow(object):
 
     # function responsible for speed
     def toggleSpeed(self, button, plot_id):
+       button.speeds = [1.0, 1.5, 2.0, 8.0, 0.25, 0.5] 
        button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
        new_speed = button.speeds[button.current_speed_index]
        button.setText(f"{new_speed}x")
        print(f"Speed set to: {new_speed}x")
-        # Update the appropriate timer interval
        if plot_id == 1:
-            self.timer1.setInterval(int(100.0 / new_speed))
+            self.timer1.setInterval(int(150 / new_speed))
        else:
-            self.timer2.setInterval(int(100.0 / new_speed))
+            self.timer2.setInterval(int(150 / new_speed))
+           
 
     def update_plot(self, plot_id):
-        # Update the plot with new data points
-        if self.play_stop_signals.is_playing(plot_id):  # For Plot1
-            if plot_id == 1:
+        if plot_id == 1 and self.play_stop_signals.is_playing(plot_id):
                 if self.plot_index1 < len(self.x1):
-                    next_x = self.x1[self.plot_index1]
-                    next_y = self.y1[self.plot_index1]
-                    self.plot_index1 += 1
+                    # next_x = self.x1[self.plot_index1]
+                    # next_y = self.y1[self.plot_index1]
 
                     # Calculate the start and end indices for the dynamic time window
-                    start_index = max(self.plot_index1 - 200, 0)  # Adjust the window size as needed
+                    start_index = max(self.plot_index1 - 200, 0) 
                     end_index = self.plot_index1
 
                     # Update the plot with the dynamic time window
                     self.Plot1.plot(self.x1[start_index:end_index], self.y1[start_index:end_index], pen='r', clear=False)
+                    self.plot_index1 += 1
 
                     # Set the x-axis limits to match the current time window
                     self.Plot1.setXRange(self.x1[start_index], self.x1[end_index])
 
-                    plt.pause(0.01)  # Adjust the pause time for animation speed
+                    plt.pause(0.01)
  
         if plot_id == 2 and self.play_stop_signals.is_playing(plot_id):     
                 if self.plot_index2 < len(self.x2):
-                    next_x = self.x2[self.plot_index2]
-                    next_y = self.y2[self.plot_index2]
-                    self.plot_index2 += 1
+                    # next_x = self.x2[self.plot_index2]
+                    # next_y = self.y2[self.plot_index2]
                     
                     # Calculate the start and end indices for the dynamic time window
-                    start_index = max(self.plot_index2 - 200, 0)  # Adjust the window size as needed
+                    start_index = max(self.plot_index2 - 200, 0)  
                     end_index = self.plot_index2
 
                     # Update the plot with the dynamic time window
                     self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=False)
-            
+                    self.plot_index2 += 1
+
                     # Set the x-axis limits to match the current time window
                     self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
 
-                    plt.pause(0.01)  # Adjust the pause time for animation speed
+                    plt.pause(0.01) 
 
-   
+
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
