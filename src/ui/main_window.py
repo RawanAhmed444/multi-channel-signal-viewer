@@ -3,7 +3,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QPoint
 import pyqtgraph as pg
 from pyqtgraph import PlotDataItem
-from logic.signal_processing import load_signal_from_file
+from logic.signal_processing import convert_signal_values_to_numeric
+from logic.real_time_data import update_real_time_data
 import pandas as pd
 import matplotlib.pyplot as plt
 from logic.calculate_stats import calculate_statistics
@@ -173,20 +174,6 @@ class RightClickPopup(QtWidgets.QMenu):
     
 
 class Ui_MainWindow(object):
-    def convert_signal_values_to_numeric(self, filename):
-        signal_data = load_signal_from_file(filename)
-        df = pd.DataFrame(signal_data)
-
-        # Convert the columns to numeric
-        df[0] = pd.to_numeric(df[0], errors='coerce')
-        df[1] = pd.to_numeric(df[1], errors='coerce')
-
-        # Extract the converted data
-        x = df[0].values
-        y = df[1].values
-        
-        return x, y
-    
     def __init__(self, play_stop_signals, parent=None):
         super().__init__()
         self.play_stop_signals = play_stop_signals
@@ -391,7 +378,7 @@ class Ui_MainWindow(object):
         if filename:
             try:
                 # Load the data from the first file
-                self.x1, self.y1 = self.convert_signal_values_to_numeric(filename)
+                self.x1, self.y1 = convert_signal_values_to_numeric(filename, 0, 1)
                 print(f"Loaded first signal from {filename}")
             except Exception as e:
                 print(f"Error loading first file: {e}")
@@ -403,7 +390,20 @@ class Ui_MainWindow(object):
         if filename:
             try:
                 # Load the data from the second file
-                self.x2, self.y2 = self.convert_signal_values_to_numeric(filename)
+                self.x2, self.y2 = convert_signal_values_to_numeric(filename, 0, 1)
+                print(f"Loaded second signal from {filename}")
+            except Exception as e:
+                print(f"Error loading second file: {e}")
+      
+    # Rawan Work Do not Touch
+    def load_fourth_signal(self):
+        # Open the file dialog for the second signal
+        filename = askopenfilename(title="Select the second signal file",
+                                   filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])
+        if filename:
+            try:
+                # Load the data from the second file
+                self.x4, self.y4 = convert_signal_values_to_numeric(filename, 1, 2)
                 print(f"Loaded second signal from {filename}")
             except Exception as e:
                 print(f"Error loading second file: {e}")
@@ -750,37 +750,33 @@ class Ui_MainWindow(object):
         self.Plot1 = pg.PlotWidget(self.centralwidget)
         self.Plot1.setGeometry(QtCore.QRect(180, 70, 800, 350)) 
         self.Plot1.setObjectName("Plot1")
-
+        self.Plot1.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot1))  
         signal1_time_length = len(self.x1)
         signal1_value_length = len(self.y1)
-        
-        signal2_time_length = len(self.x2)
-        signal2_value_length = len(self.y2)
-        
-        self.Plot1.setXRange(0, signal1_time_length)  # Set x-axis limits from 0 to 10
-        self.Plot1.setYRange(0, signal1_value_length)  # Set y-axis limits from 0 to 100
-        self.Plot1.setObjectName("Plot1")
-        self.Plot1.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot1))  # Connect mouse click to the plot
-
+        #Set x and y limits 
+        self.Plot1.setXRange(0, signal1_time_length)  
+        self.Plot1.setYRange(0, signal1_value_length) 
         # Set axis labels
         self.Plot1.setLabel('bottom', "Time (s)")
         self.Plot1.setLabel('left', "Normal Signal")
 
+        # Initiate graph 2 for abnormal signal
         self.Plot2 = pg.PlotWidget(self.centralwidget)
-        self.Plot2.setGeometry(QtCore.QRect(180, 530, 800, 350))
+        self.Plot2.setGeometry(QtCore.QRect(180, 530, 800, 350))  
         self.Plot2.setObjectName("Plot2")
-        self.Plot2.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot2))  # Connect mouse click to the plot
-
-        self.Plot2.setXRange(0, signal2_time_length)  # Set x-axis limits from 0 to 10
-        self.Plot2.setYRange(0, signal2_value_length)  # Set y-axis limits from 0 to 100
-
+        self.Plot2.scene().sigMouseClicked.connect(self.plotRightClicked)  
+        signal2_time_length = len(self.x2)
+        signal2_value_length = len(self.y2)
+        # Set x and y limits 
+        self.Plot2.setXRange(0, signal2_time_length)  
+        self.Plot2.setYRange(0, signal2_value_length) 
         # Set axis labels
         self.Plot2.setLabel('bottom', "Time (s)")
         self.Plot2.setLabel('left', "Abnormal Signal")
 
         # Mirrored plots
         self.Plot3 = pg.PlotWidget(self.centralwidget)
-        self.Plot3.setGeometry(QtCore.QRect(1090, 300, 800, 350))  # Right Plot1
+        self.Plot3.setGeometry(QtCore.QRect(1090, 300, 800, 350))  
         self.Plot3.setObjectName("Plot3")
         self.Plot3.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot3))  # Connect mouse click to the plot
 
@@ -788,13 +784,12 @@ class Ui_MainWindow(object):
         self.plotData()
 
     def plotData(self):
-        self.Plot1.enableAutoRange()  # Enable automatic scaling of axes
-        self.Plot1.showGrid(x=True, y=True)  # Show grid lines
-        
-        self.Plot2.enableAutoRange()  # Enable automatic scaling of axes
-        self.Plot2.showGrid(x=True, y=True)  # Show grid lines
-
+        self.Plot1.enableAutoRange()
+        self.Plot1.showGrid(x=True, y=True)  
         self.timer1.start()
+        
+        self.Plot2.enableAutoRange()  
+        self.Plot2.showGrid(x=True, y=True) 
         self.timer2.start()
 
         # Initialize plot indices separately for each plot
@@ -860,6 +855,7 @@ class Ui_MainWindow(object):
                     plt.pause(0.01)
  
         if plot_id == 2 and self.play_stop_signals.is_playing(plot_id):     
+                # Update the plot with new data points for abnormal signal    
                 if self.plot_index2 < len(self.x2):
                     # next_x = self.x2[self.plot_index2]
                     # next_y = self.y2[self.plot_index2]
