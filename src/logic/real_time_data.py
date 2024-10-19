@@ -5,7 +5,7 @@ import numpy as np
 
 
 def get_real_time_signal(stock_code):
-    """Fetches real-time stock price from Google Finance (may be unreliable).
+    """Fetches real-time stock price from Google Finance.
 
     Args:
         stock_code (str): The stock code (e.g., "AAPL-USD").
@@ -48,8 +48,8 @@ def update_real_time_data():
 
     return time_in_seconds, price
 
-while True:
-    print(update_real_time_data())
+# while True:
+#     print(update_real_time_data())
 
 
 
