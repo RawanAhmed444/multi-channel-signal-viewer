@@ -200,7 +200,9 @@ class Ui_MainWindow(object):
         self.plot_index1 = 0
         self.plot_index2 = 0
 
-
+        # Initialize window size to dynamically move the time axis
+        self.time_size = 200
+        
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1920, 1080)
@@ -781,17 +783,15 @@ class Ui_MainWindow(object):
 
         # Mirrored plots
         self.Plot3 = pg.PlotWidget(self.centralwidget)
-        self.Plot3.setGeometry(QtCore.QRect(1090, 300, 800, 350))  # Right Plot1
+        self.Plot3.setGeometry(QtCore.QRect(1090, 300, 800, 350))  
         self.Plot3.setObjectName("Plot3")
-        self.Plot3.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        self.Plot3.scene().sigMouseClicked.connect(self.plotRightClicked)  
 
         # Example data for plotting
         self.plotData()
 
     def plotData(self):
-        # Enable automatic scaling of axes
-        self.Plot1.enableAutoRange()  
-        # Show grid lines
+        self.Plot1.enableAutoRange()
         self.Plot1.showGrid(x=True, y=True)  
         self.timer1.start()
         
@@ -839,14 +839,14 @@ class Ui_MainWindow(object):
 
     def update_plot(self, plot_id):
         # Update the plot with new data points
-        if self.play_stop_signals.is_playing(plot_id):  # For Plot1
+        if self.play_stop_signals.is_playing(plot_id):  
             if plot_id == 1:
                 # Update the plot with new data points for normal signal
                 if self.plot_index1 < len(self.x1):
                     self.plot_index1 += 1
 
                     # Calculate the start and end indices for the dynamic time window
-                    start_index = max(self.plot_index1 - 200, 0) 
+                    start_index = max(self.plot_index1 - self.time_size, 0) 
                     end_index = self.plot_index1
 
                     # Update the plot with the dynamic time window
@@ -864,7 +864,7 @@ class Ui_MainWindow(object):
                     self.plot_index2 += 1
                     
                     # Calculate the start and end indices for the dynamic time window
-                    start_index = max(self.plot_index2 - 200, 0)  
+                    start_index = max(self.plot_index2 - self.time_size, 0)  
                     end_index = self.plot_index2
 
                     # Update the plot with the dynamic time window
