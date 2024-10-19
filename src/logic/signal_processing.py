@@ -45,20 +45,20 @@ def convert_signal_values_to_numeric(filename, col1, col2):
 
     return x, y
 
-def cartesian_to_polar(filename, col1, col2):
-    """Converts rectangular coordinates to polar coordinates.
+# def cartesian_to_polar(filename, col1, col2):
+#     """Converts rectangular coordinates to polar coordinates.
 
-    Args:
-        filename: The name of the CSV file containing the data.
+#     Args:
+#         filename: The name of the CSV file containing the data.
 
-    Returns:
-        A tuple containing the r-coordinate and θ-coordinate as NumPy arrays.
-    """
+#     Returns:
+#         A tuple containing the r-coordinate and θ-coordinate as NumPy arrays.
+#     """
 
-    x, y = convert_signal_values_to_numeric(filename, col1, col2)  
+#     x, y = convert_signal_values_to_numeric(filename, col1, col2)  
 
-    # Use NumPy's element-wise operations to calculate r and theta
-    r = np.sqrt(x**2 + y**2)
-    theta = np.arctan2(y, x)
+#     # Use NumPy's element-wise operations to calculate r and theta
+#     r = np.sqrt(x**2 + y**2)
+#     theta = np.arctan2(y, x)
 
-    return r, theta
+#     return r, theta

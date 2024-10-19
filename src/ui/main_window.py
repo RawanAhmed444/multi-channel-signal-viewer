@@ -2,7 +2,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import numpy as np
 from pyqtgraph import PlotDataItem
-from logic.signal_processing import convert_signal_values_to_numeric, cartesian_to_polar
+from logic.signal_processing import convert_signal_values_to_numeric
 from logic.real_time_data import update_real_time_data
 import matplotlib.pyplot as plt
 from logic.calculate_stats import calculate_statistics
@@ -159,7 +159,7 @@ class Ui_MainWindow(object):
         super().__init__()
         # Initialize plot_index
         self.plot_index = 0  
-
+        self.time_size = 200
         # Initialize the normal signal file and its axis
         normal_signal = "src\\data\\signals\\ECG_Normal.csv"
         self.x1, self.y1 = convert_signal_values_to_numeric(normal_signal, 0, 1)
@@ -172,8 +172,6 @@ class Ui_MainWindow(object):
         non_rectangle_signal = "src\\data\\signals\\radar.csv"
         self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 1, 2)
         
-        # Initialize list to append real-time data
-        self.data = []
         
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -384,26 +382,21 @@ class Ui_MainWindow(object):
         self.Plot2.setLabel('bottom', "Time (s)")
         self.Plot2.setLabel('left', "Abnormal Signal")
 
-         # Initiate graph 3 for real-time signal
-        self.Plot3 = pg.PlotWidget(self.centralwidget)
-        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  
-        self.Plot3.setObjectName("Plot3")
-        # # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
-        # Set axis labels
-        self.Plot3.setLabel('bottom', "Time (s)")
-        self.Plot3.setLabel('left', "Real Time Signal")
-        self.curve = self.Plot3.plot()
+        # # Initiate graph 3 for real-time signal
+        # self.Plot3 = pg.PlotWidget(self.centralwidget)
+        # self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  
+        # self.Plot3.setObjectName("Plot3")
+        # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  
+        # # Set axis labels
+        # self.Plot3.setLabel('bottom', "Time (s)")
+        # self.Plot3.setLabel('left', "Real Time Signal")
+        # self.curve = self.Plot3.plot()
 
          # Initiate graph 4 for non-rectangle signal
         self.Plot4 = pg.PlotWidget(self.centralwidget, polar=True)
         self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  
         self.Plot4.setObjectName("Plot4")
         # self.Plot4.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
-        
-        # # Set axis limits (optional)
-        # self.Plot4.setXRange(0, 360)
-        # self.Plot4.setYRange(0, 2)
-
         self.Plot4.setLabel('bottom', "Theta")
         self.Plot4.setLabel('left', "Angle")
         
@@ -417,16 +410,14 @@ class Ui_MainWindow(object):
         Connects the timer's timeout signal to the `update_plot` function.
         """
         
-        # Enable automatic scaling of axes
-        self.Plot1.enableAutoRange()  
-        # Show grid lines
+        self.Plot1.enableAutoRange() 
         self.Plot1.showGrid(x=True, y=True)  
         
         self.Plot2.enableAutoRange()  
         self.Plot2.showGrid(x=True, y=True)  
 
-        self.Plot3.enableAutoRange()  
-        self.Plot3.showGrid(x=True, y=True)  
+        # self.Plot3.enableAutoRange()  
+        # self.Plot3.showGrid(x=True, y=True)  
 
         self.Plot4.enableAutoRange()  
         self.Plot4.showGrid(x=True, y=True)  
@@ -455,7 +446,7 @@ class Ui_MainWindow(object):
             self.plot_index += 1
 
             # Calculate the start and end indices for the dynamic time window
-            start_index = max(self.plot_index - 200, 0) 
+            start_index = max(self.plot_index - self.time_size, 0) 
             end_index = self.plot_index
 
             # Update the plot with the dynamic time window
@@ -472,7 +463,7 @@ class Ui_MainWindow(object):
             self.plot_index += 1
               
             # Calculate the start and end indices for the dynamic time window
-            start_index = max(self.plot_index - 200, 0)  
+            start_index = max(self.plot_index - self.time_size, 0)  
             end_index = self.plot_index
 
             # Update the plot with the dynamic time window
@@ -491,18 +482,30 @@ class Ui_MainWindow(object):
         self.update_non_rectangle_plot()
         
     def update_real_time_plot(self):
+        # Initiate graph 3 for real-time signal
+        self.Plot3 = pg.PlotWidget(self.centralwidget)
+        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  
+        self.Plot3.setObjectName("Plot3")
+        self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  
+        # Set axis labels
+        self.Plot3.setLabel('bottom', "Time (s)")
+        self.Plot3.setLabel('left', "Real Time Signal")
+        self.curve = self.Plot3.plot()
+        
+        self.Plot3.enableAutoRange()  
+        self.Plot3.showGrid(x=True, y=True)  
+        
+        # Initialize list to append real-time data
+        data = []
         # Get new data point
         timestamp, price = update_real_time_data()
-
         # Add new data point to list
-        self.data.append((timestamp, price))
-
+        data.append((timestamp, price))
         # Update the curve with all data points
-        self.curve.setData(x=[d[0] for d in self.data], y=[d[1] for d in self.data])
-
+        self.curve.setData(x=[d[0] for d in data], y=[d[1] for d in data])
         # Limit the number of data points for performance
-        if len(self.data) > 50:
-            self.data = self.data[-50:]
+        if len(data) > 50:
+            data = data[-50:]
             
     def update_non_rectangle_plot(self):
         # Update the plot with new data points for non-rectangle signal
@@ -510,7 +513,7 @@ class Ui_MainWindow(object):
             self.plot_index += 1
 
             # Calculate the start and end indices for the dynamic time window
-            start_index = max(self.plot_index - 200, 0)  
+            start_index = max(self.plot_index - self.time_size, 0)  
             end_index = self.plot_index
             
             # Calculate theta (angle) and radial distance (r)
@@ -519,6 +522,7 @@ class Ui_MainWindow(object):
 
             # Update the plot with polar coordinates
             self.Plot4.plot(theta, r, pen='y', clear=False)
+            
             # Adjust the pause time for animation speed
             plt.pause(0.01)
             
