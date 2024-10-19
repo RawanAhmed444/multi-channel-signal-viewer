@@ -764,7 +764,7 @@ class Ui_MainWindow(object):
         self.Plot2 = pg.PlotWidget(self.centralwidget)
         self.Plot2.setGeometry(QtCore.QRect(180, 530, 800, 350))  
         self.Plot2.setObjectName("Plot2")
-        self.Plot2.scene().sigMouseClicked.connect(self.plotRightClicked)  
+        self.Plot2.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot2))  
         signal2_time_length = len(self.x2)
         signal2_value_length = len(self.y2)
         # Set x and y limits 
@@ -778,7 +778,7 @@ class Ui_MainWindow(object):
         self.Plot3 = pg.PlotWidget(self.centralwidget)
         self.Plot3.setGeometry(QtCore.QRect(1090, 300, 800, 350))  
         self.Plot3.setObjectName("Plot3")
-        self.Plot3.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot3))  # Connect mouse click to the plot
+        self.Plot3.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot3))
 
         # Example data for plotting
         self.plotData()
