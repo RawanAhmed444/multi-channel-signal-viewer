@@ -182,10 +182,12 @@ class RightClickPopup(QtWidgets.QMenu):
 
         if color.isValid():
             color_rgb = color.getRgb()[:3]  # Get (R, G, B) values
-            self.Plot.getPlotItem().listDataItems()[0].setPen(color_rgb)
+            self.Plot.getPlotItem().listDataItems()[1].setPen(color_rgb)
 
     def hide_plot(self):
-        self.Plot.curve1.setVisible(False)
+        self.main_window.curve1.setVisible(not self.main_window.curve1.isVisible())
+        self.main_window.setVisible(not self.main_window.curve2.isVisible())
+
     def show_statistics(self):
             self.hide()
             selected_signal_stats = calculate_statistics(self.selected_signal_data)
@@ -212,7 +214,13 @@ class Ui_MainWindow(object):
     def __init__(self, play_stop_signals, parent=None):
         super().__init__()
         self.play_stop_signals = play_stop_signals
-        self.plot_index = 0  
+        self.signal_data_plot1 = []  # List to store (x, y) pairs for Plot1
+        self.signal_data_plot2 = []  # List to store (x, y) pairs for Plot2
+        self.curves_plot1 = []  # Store curves for Plot1
+        self.curves_plot2 = []  # Store curves for Plot2
+        self.plot_index_plot1 = 0  # Reset the plot index for Plot1
+        self.plot_index_plot2 = 0  # Reset the plot index for Plot1
+
         self.parent = parent
         self.rois = []  
         self.region_count = 0
@@ -225,11 +233,11 @@ class Ui_MainWindow(object):
 
         self.timer1 = QtCore.QTimer()
         self.timer1.setInterval(150) 
-        self.timer1.timeout.connect(lambda: self.update_plot(1))  
+        # self.timer1.timeout.connect(lambda: self.update_plot(1))
 
         self.timer2 = QtCore.QTimer()
         self.timer2.setInterval(150)  
-        self.timer2.timeout.connect(lambda: self.update_plot(2))  
+        # self.timer2.timeout.connect(lambda: self.update_plot(2))
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -406,31 +414,55 @@ class Ui_MainWindow(object):
         self.radioQuadratic.toggled.connect(self.perform_interpolation)
         self.radioCubic.toggled.connect(self.perform_interpolation)
 
-    
     def load_first_signal(self):
-        # Open the file dialog for the first signal
-        filename = askopenfilename(title="Select the first signal file",
+        # Check if maximum signals have already been loaded
+        if len(self.signal_data_plot1) >= 5:
+            print("Maximum limit of 5 signals already loaded for Plot1.")
+            return
+
+        filename = askopenfilename(title="Select signal file for Plot1",
                                    filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])
         if filename:
             try:
-                # Load the data from the first file
-                self.x1, self.y1 = convert_signal_values_to_numeric(filename, 0, 1)
-                print(f"Loaded first signal from {filename}")
+                # Load the data from the selected file
+                x, y = convert_signal_values_to_numeric(filename, 0, 1)
+                self.signal_data_plot1.append((x, y))  # Append the loaded signal
+                print(f"Loaded signal {len(self.signal_data_plot1)} from {filename}")
+
+                # Create a new curve for the loaded signal
+                curve = self.createCurve(self.Plot1)
+                self.curves_plot1.append(curve)  # Store the new curve
+
+                # Connect the timer to update the plot for Plot1
+                self.timer1.timeout.connect(lambda: self.update_plot(self.signal_data_plot1, self.curves_plot1, 1))
+
             except Exception as e:
-                print(f"Error loading first file: {e}")
+                print(f"Error loading signal: {e}")
 
     def load_second_signal(self):
-        # Open the file dialog for the second signal
-        filename = askopenfilename(title="Select the second signal file",
+        # Check if maximum signals have already been loaded
+        if len(self.signal_data_plot2) >= 5:
+            print("Maximum limit of 5 signals already loaded for Plot2.")
+            return
+
+        filename = askopenfilename(title="Select signal file for Plot2",
                                    filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")])
         if filename:
             try:
-                # Load the data from the second file
-                self.x2, self.y2 = convert_signal_values_to_numeric(filename, 0, 1)
-                print(f"Loaded second signal from {filename}")
+                # Load the data from the selected file
+                x, y = convert_signal_values_to_numeric(filename, 0, 1)
+                self.signal_data_plot2.append((x, y))  # Append the loaded signal
+                print(f"Loaded signal {len(self.signal_data_plot2)} from {filename}")
+
+                # Create a new curve for the loaded signal
+                curve = self.createCurve(self.Plot2)
+                self.curves_plot2.append(curve)  # Store the new curve
+
+                # Connect the timer to update the plot for Plot2
+                self.timer2.timeout.connect(lambda: self.update_plot(self.signal_data_plot2, self.curves_plot2, 2))
+
             except Exception as e:
-                print(f"Error loading second file: {e}")
-      
+                print(f"Error loading signal: {e}")
     # Rawan Work Do not Touch
     def load_fourth_signal(self):
         # Open the file dialog for the second signal
@@ -796,7 +828,6 @@ class Ui_MainWindow(object):
         # Set axis labels
         self.Plot1.setLabel('bottom', "Time (s)")
         self.Plot1.setMenuEnabled(False)
-        self.curve1 = self.Plot1.plot(pen='r')
         # Initiate graph 2 for abnormal signal
         self.Plot2 = pg.PlotWidget(self.centralwidget)
         self.Plot2.setGeometry(QtCore.QRect(180, 530, 800, 350))  
@@ -810,8 +841,6 @@ class Ui_MainWindow(object):
         # Set axis labels
         self.Plot2.setLabel('bottom', "Time (s)")
         self.Plot2.setMenuEnabled(False)
-        self.curve2 = self.Plot2.plot(pen='b')
-
 
         # Mirrored plots
         self.Plot3 = pg.PlotWidget(self.centralwidget)
@@ -823,6 +852,9 @@ class Ui_MainWindow(object):
         # Example data for plotting
         self.plotData()
 
+    def createCurve(self, Plot):
+        curve = Plot.plot(clear=False)
+        return curve
     def plotData(self):
         self.Plot1.enableAutoRange()
         self.Plot1.showGrid(x=True, y=True)  
@@ -873,47 +905,44 @@ class Ui_MainWindow(object):
             self.timer1.setInterval(int(150 / new_speed))
        else:
             self.timer2.setInterval(int(150 / new_speed))
-           
 
-    def update_plot(self, plot_id):
-        if plot_id == 1 and self.play_stop_signals.is_playing(plot_id):
-                if self.plot_index1 < len(self.x1):
-                    # next_x = self.x1[self.plot_index1]
-                    # next_y = self.y1[self.plot_index1]
+    def update_plot(self, signal_data, curves, plot_id):
+        if plot_id == 1:
+            plot_index = self.plot_index_plot1
+        elif plot_id == 2:
+            plot_index = self.plot_index_plot2
 
-                    # Calculate the start and end indices for the dynamic time window
-                    start_index = max(self.plot_index1 - 200, 0) 
-                    end_index = self.plot_index1
+        if self.play_stop_signals.is_playing(plot_id):
+            # Loop through each signal and update the corresponding curve
+            for i, curve in enumerate(curves):
+                if i < len(signal_data):
+                    x, y = signal_data[i]
 
-                    # Update the plot with the dynamic time window
-                    self.curve1.setData(self.x1[start_index:end_index], self.y1[start_index:end_index])
-                    self.plot_index1 += 1
+                    # Check that plot_index is within bounds
+                    if plot_index < len(x) and plot_index > 0:
+                        start_index = max(plot_index - 200, 0)
+                        end_index = min(plot_index, len(x))  # Ensure end_index is within bounds
 
-                    # Set the x-axis limits to match the current time window
-                    self.Plot1.setXRange(self.x1[start_index], self.x1[end_index])
+                        # Update the current curve with its specific signal data
+                        curve.setData(x[start_index:end_index], y[start_index:end_index])
 
-                    plt.pause(0.01)
- 
-        if plot_id == 2 and self.play_stop_signals.is_playing(plot_id):     
-                # Update the plot with new data points for abnormal signal    
-                if self.plot_index2 < len(self.x2):
-                    # next_x = self.x2[self.plot_index2]
-                    # next_y = self.y2[self.plot_index2]
-                    
-                    # Calculate the start and end indices for the dynamic time window
-                    start_index = max(self.plot_index2 - 200, 0)  
-                    end_index = self.plot_index2
+                    else:
+                        # Prevent negative or zero values in case of an invalid index
+                        curve.setData([], [])
 
-                    # Update the plot with the dynamic time window
-                    self.curve2.setData(self.x1[start_index:end_index], self.y1[start_index:end_index])
-                    self.plot_index2 += 1
+            # Increment the plot_index to move to the next data point
+            if plot_id == 1:
+                self.plot_index_plot1 += 1
+            elif plot_id == 2:
+                self.plot_index_plot2 += 1
 
-                    # Set the x-axis limits to match the current time window
-                    self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
+            # Set the x-axis limits based on the first signal in the current plot
+            if signal_data:
+                x_min = min(signal_data[0][0])  # Minimum x of the first signal
+                x_max = max(signal_data[0][0])  # Maximum x of the first signal
+                curves[0].setXRange(x_min, x_max)
 
-                    plt.pause(0.01) 
-
+            plt.pause(0.01)
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
