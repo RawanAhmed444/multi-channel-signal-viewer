@@ -2,13 +2,13 @@ import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QPoint
 import pyqtgraph as pg
-from pyqtgraph import PlotDataItem
+from pyqtgraph import PlotDataItem, mkPen
 from logic.signal_processing import convert_signal_values_to_numeric
 from logic.real_time_data import update_real_time_data
 import pandas as pd
 import matplotlib.pyplot as plt
 from logic.calculate_stats import calculate_statistics
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QInputDialog, QColorDialog
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen
 from PyQt5.QtWidgets import QGraphicsView
@@ -112,10 +112,11 @@ class StatisticsPopup(QtWidgets.QDialog):
         self.statsLabel.setText(selected_signal_stats_text)
 
 class RightClickPopup(QtWidgets.QMenu):
-    def __init__(self, parent=None, selected_signal_data=None, main_window = None):
+    def __init__(self, parent=None, selected_signal_data=None, main_window = None, Plot = None):
         super(RightClickPopup, self).__init__(parent)
         self.selected_signal_data = selected_signal_data
-        self.main_window = main_window 
+        self.main_window = main_window
+        self.Plot = Plot
         self.setStyleSheet("""
             QMenu {
             background-color: #1D1C1C;  /* Dark gray background */
@@ -138,19 +139,53 @@ class RightClickPopup(QtWidgets.QMenu):
             }
         """)
 
-        self.setWindowFlags(QtCore.Qt.FramelessWindowHint)  # Remove title bar
+        self.setWindowFlags(QtCore.Qt.Popup | QtCore.Qt.FramelessWindowHint)  # Close when clicking outside and remove title bar
 
         # Add actions to the menu
-        self.addAction("Name", self.hide)
+        self.addAction("Name", self.change_name)
         self.addSeparator()
-        self.addAction("Color", self.hide)
+        self.addAction("Color", self.change_color)
         self.addSeparator()
-        self.addAction("Hide", self.hide)
+        self.addAction("Hide", self.hide_plot)
         self.addSeparator()
         self.addAction("Swap" , self.swap_signals)
         self.addSeparator()
         self.addAction("Statistics", self.show_statistics)
-       
+
+
+    def change_name(self):
+        self.setStyleSheet("""
+            QInputDialog {
+                background-color: black;
+                color: white;
+            }
+            QLineEdit {
+                background-color: black;
+                color: white;
+                border: 1px solid white;
+            }
+            QLabel {
+                color: white;
+            }
+        """)
+
+        # Open the input dialog
+        text, ok = QInputDialog.getText(self, "Change Plot Name", "Enter new name:")
+
+        # If the user pressed OK and entered some text
+        if ok and text:
+            self.Plot.setTitle(text)  # Change the plot title
+
+    def change_color(self):
+        # Open a QColorDialog to let the user pick a color
+        color = QColorDialog.getColor()
+
+        if color.isValid():
+            color_rgb = color.getRgb()[:3]  # Get (R, G, B) values
+            self.Plot.getPlotItem().listDataItems()[0].setPen(color_rgb)
+
+    def hide_plot(self):
+        self.Plot.curve1.setVisible(False)
     def show_statistics(self):
             self.hide()
             selected_signal_stats = calculate_statistics(self.selected_signal_data)
@@ -270,6 +305,7 @@ class Ui_MainWindow(object):
         self.ZoomIn1 = self.createButtonWithIcon("src/data/Images/Zoom in.png", 770, 440, )  # Left Zoom In button
         self.ZoomOut1 = self.createButtonWithIcon("src/data/Images/Zoom out.png", 850, 440, ) # Left Zoom Out button
         self.Snapshot1 = self.createButtonWithIcon("src/data/Images/Snapshot.png", 930, 440, )     # Left SS button
+
 
         self.Signal1.clicked.connect(self.load_first_signal)
         self.ZoomIn1.clicked.connect(self.zoom_in_1)
@@ -592,7 +628,8 @@ class Ui_MainWindow(object):
             context_menu = RightClickPopup(
             parent=self.parent,
             selected_signal_data=self.selected_signal_data,
-            main_window=self
+            main_window=self,
+            Plot= plot_widget
         )
             context_menu.exec_(QPoint(int(event.screenPos().x()), int(event.screenPos().y()))) #show the menu at the mouse position 
 
@@ -758,8 +795,8 @@ class Ui_MainWindow(object):
         self.Plot1.setYRange(0, signal1_value_length) 
         # Set axis labels
         self.Plot1.setLabel('bottom', "Time (s)")
-        self.Plot1.setLabel('left', "Normal Signal")
-
+        self.Plot1.setMenuEnabled(False)
+        self.curve1 = self.Plot1.plot(pen='r')
         # Initiate graph 2 for abnormal signal
         self.Plot2 = pg.PlotWidget(self.centralwidget)
         self.Plot2.setGeometry(QtCore.QRect(180, 530, 800, 350))  
@@ -772,12 +809,15 @@ class Ui_MainWindow(object):
         self.Plot2.setYRange(0, signal2_value_length) 
         # Set axis labels
         self.Plot2.setLabel('bottom', "Time (s)")
-        self.Plot2.setLabel('left', "Abnormal Signal")
+        self.Plot2.setMenuEnabled(False)
+        self.curve2 = self.Plot2.plot(pen='b')
+
 
         # Mirrored plots
         self.Plot3 = pg.PlotWidget(self.centralwidget)
         self.Plot3.setGeometry(QtCore.QRect(1090, 300, 800, 350))  
         self.Plot3.setObjectName("Plot3")
+        self.Plot3.setMenuEnabled(False)
         self.Plot3.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot3))
 
         # Example data for plotting
@@ -846,7 +886,7 @@ class Ui_MainWindow(object):
                     end_index = self.plot_index1
 
                     # Update the plot with the dynamic time window
-                    self.Plot1.plot(self.x1[start_index:end_index], self.y1[start_index:end_index], pen='r', clear=False)
+                    self.curve1.setData(self.x1[start_index:end_index], self.y1[start_index:end_index])
                     self.plot_index1 += 1
 
                     # Set the x-axis limits to match the current time window
@@ -865,7 +905,7 @@ class Ui_MainWindow(object):
                     end_index = self.plot_index2
 
                     # Update the plot with the dynamic time window
-                    self.Plot2.plot(self.x2[start_index:end_index], self.y2[start_index:end_index], pen='b', clear=False)
+                    self.curve2.setData(self.x1[start_index:end_index], self.y1[start_index:end_index])
                     self.plot_index2 += 1
 
                     # Set the x-axis limits to match the current time window
