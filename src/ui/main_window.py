@@ -146,7 +146,7 @@ class RightClickPopup(QtWidgets.QMenu):
         self.addSeparator()
         self.addAction("Color", self.change_color)
         self.addSeparator()
-        self.addAction("Hide", self.hide_plot)
+        self.hide_show_action = self.addAction("Show/Hide", self.hide_plot)
         self.addSeparator()
         self.addAction("Swap" , self.swap_signals)
         self.addSeparator()
@@ -182,11 +182,19 @@ class RightClickPopup(QtWidgets.QMenu):
 
         if color.isValid():
             color_rgb = color.getRgb()[:3]  # Get (R, G, B) values
-            self.Plot.getPlotItem().listDataItems()[1].setPen(color_rgb)
+
+            # Iterate through all curves in the plot and set their pen color
+            for curve in self.Plot.getPlotItem().listDataItems():
+                curve.setPen(color_rgb)
 
     def hide_plot(self):
-        self.main_window.curve1.setVisible(not self.main_window.curve1.isVisible())
-        self.main_window.setVisible(not self.main_window.curve2.isVisible())
+            if self.Plot.getPlotItem().listDataItems()[0].isVisible():
+                for curve in self.main_window.Plot1.getPlotItem().listDataItems():
+                    curve.setVisible(False)
+            else:
+                for curve in self.main_window.Plot1.getPlotItem().listDataItems():
+                    curve.setVisible(True)
+
 
     def show_statistics(self):
             self.hide()
@@ -937,10 +945,10 @@ class Ui_MainWindow(object):
                 self.plot_index_plot2 += 1
 
             # Set the x-axis limits based on the first signal in the current plot
-            if signal_data:
-                x_min = min(signal_data[0][0])  # Minimum x of the first signal
-                x_max = max(signal_data[0][0])  # Maximum x of the first signal
-                curves[0].setXRange(x_min, x_max)
+            # if signal_data:
+            #     x_min = min(signal_data[0][0])  # Minimum x of the first signal
+            #     x_max = max(signal_data[0][0])  # Maximum x of the first signal
+            #     curves[0].setXRange(x_min, x_max)
 
             plt.pause(0.01)
 
