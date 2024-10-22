@@ -99,14 +99,25 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # linking this to take_snapshot file
     def take_snapshot(self, plot_widget, plot_name):
-        data = self.get_plot_data(plot_widget)  
-        stats = calculate_statistics(data)     
+        # Get the data from the plot widget
+        x_data, full_y_data = self.get_plot_data(plot_widget)
+
+         # Check if full_y_data is empty
+        if len(full_y_data) == 0:
+            print("Warning: full_y_data is empty.")
+        else:
+            # Calculate statistics using only the full_y_data
+            stats = calculate_statistics(full_y_data)  # Use full_y_data for statistics
+
+            # Print calculated statistics for debugging
+            print(f"Calculated statistics for {plot_name}: {stats}")
+
+        # Take a snapshot and get the path
         snapshot_path = take_snapshot(plot_widget, plot_name=plot_name) 
 
-        # Store snapshot and statistics
+        # Store snapshot path and statistics
         self.snapshots.append(snapshot_path)
         self.statistics_data.append(stats)
-
     # function responsible for play_pause 
     def toggle_play_stop(self, plot_id):
         if self.play_stop_signals.is_playing(plot_id):

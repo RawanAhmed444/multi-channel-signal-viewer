@@ -374,12 +374,12 @@ class Ui_MainWindow(object):
             QSlider::handle:horizontal { 
             background-color: #616161; 
             border: 2px solid #121212; 
-            width: 20px; 
-            height: 24px; 
+            width: 28px; 
+            height: 32px; 
             line-height: 20px; 
-            margin-top: -7px; 
-            margin-bottom: -7px; 
-            border-radius: 12px; 
+            margin-top: -10px; 
+            margin-bottom: -10px; 
+            border-radius: 14px; 
             }
         """)
         self.slider.setMinimum(0)
@@ -683,6 +683,48 @@ class Ui_MainWindow(object):
                 self.Plot2.setXRange(self.x2[start_index], self.x2[end_index])
 
                 plt.pause(0.01)  # Adjust the pause time for animation speed
+
+    def update_real_time_plot(self):
+        # Initialize list to append real-time data
+        data = []
+        # Get new data point
+        timestamp, price = self.update_real_time_data()
+
+        # Add new data point to list
+        data.append((timestamp, price))
+
+        # Update the curve with all data points
+        self.curve.setData(x=[d[0] for d in data], y=[d[1] for d in data])
+
+        # Limit the number of data points for performance
+        if len(data) > 50:
+            data = data[-50:]
+
+    def update_non_rectangle_plot(self):
+        # Update the plot with new data points for non-rectangle signal
+        if self.plot_index < len(self.x4):
+            self.plot_index += 1
+
+            # Calculate the start and end indices for the dynamic time window
+            start_index = max(self.plot_index - self.time_size, 0)
+            end_index = self.plot_index
+
+            # Calculate theta (angle) and radial distance (r)
+            theta = np.arctan2(self.y4[start_index:end_index], self.x4[start_index:end_index])
+            r = np.sqrt(self.x4[start_index:end_index]**2 + self.y4[start_index:end_index]**2)
+
+            # Update the plot with polar coordinates
+            self.Plot4.plot(theta, r, pen='y', clear=False)
+
+            # Adjust the pause time for animation speed
+            plt.pause(0.01)
+
+    def update_real_time_data(self):
+        # Dummy implementation, replace with actual data fetching logic
+        import time
+        import random
+        return time.time(), random.uniform(0, 100)
+
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
