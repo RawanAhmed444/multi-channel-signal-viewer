@@ -207,9 +207,9 @@ class RightClickPopup(QtWidgets.QMenu):
         """Determine the interpolation order based on the curvature of the two signals."""
         average_curvature = (curvature1 + curvature2) / 2
         
-        if average_curvature < 50000:
+        if average_curvature < 500:
             return 1 
-        elif 50000 <= average_curvature < 100000:
+        elif 500 <= average_curvature < 100000:
             return 2
         else:
             return 3 

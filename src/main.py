@@ -160,7 +160,7 @@ class MainWindow(QtWidgets.QMainWindow):
        
     def get_plot_data(self, plot_widget):
         items = plot_widget.listDataItems()
-        full_y_data = []
+        full_y_data = [] 
         x_data = None
         print("Number of items in plot:", len(items))  # Debugging line
 
