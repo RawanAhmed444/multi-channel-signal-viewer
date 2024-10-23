@@ -157,9 +157,13 @@ class RightClickPopup(QtWidgets.QMenu):
 class Ui_MainWindow(object):
     def __init__(self):
         super().__init__()
-        # Initialize plot_index
+        # Initialize plot_index  and time window size
         self.plot_index = 0  
         self.time_size = 200
+        
+        # Initialize list to append real-time data
+        self.data = []
+        
         # Initialize the normal signal file and its axis
         normal_signal = "src\\data\\signals\\ECG_Normal.csv"
         self.x1, self.y1 = convert_signal_values_to_numeric(normal_signal, 0, 1)
@@ -358,7 +362,7 @@ class Ui_MainWindow(object):
         self.Plot1 = pg.PlotWidget(self.centralwidget)
         self.Plot1.setGeometry(QtCore.QRect(120, 70, 541, 201))  
         self.Plot1.setObjectName("Plot1")
-        # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  
         signal1_time_length = len(self.x1)
         signal1_value_length = len(self.y1)
         #Set x and y limits 
@@ -372,7 +376,7 @@ class Ui_MainWindow(object):
         self.Plot2 = pg.PlotWidget(self.centralwidget)
         self.Plot2.setGeometry(QtCore.QRect(120, 390, 541, 201))  
         self.Plot2.setObjectName("Plot2")
-        # self.Plot2.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        # self.Plot2.scene().sigMouseClicked.connect(self.plotRightClicked)  
         signal2_time_length = len(self.x2)
         signal2_value_length = len(self.y2)
         # Set x and y limits 
@@ -382,21 +386,21 @@ class Ui_MainWindow(object):
         self.Plot2.setLabel('bottom', "Time (s)")
         self.Plot2.setLabel('left', "Abnormal Signal")
 
-        # # Initiate graph 3 for real-time signal
-        # self.Plot3 = pg.PlotWidget(self.centralwidget)
-        # self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  
-        # self.Plot3.setObjectName("Plot3")
+         # Initiate graph 3 for real-time signal
+        self.Plot3 = pg.PlotWidget(self.centralwidget)
+        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  
+        self.Plot3.setObjectName("Plot3")
         # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  
-        # # Set axis labels
-        # self.Plot3.setLabel('bottom', "Time (s)")
-        # self.Plot3.setLabel('left', "Real Time Signal")
-        # self.curve = self.Plot3.plot()
+        # Set axis labels
+        self.Plot3.setLabel('bottom', "Time (s)")
+        self.Plot3.setLabel('left', "Real Time Signal")
+        self.curve = self.Plot3.plot(pen = 'g')
 
          # Initiate graph 4 for non-rectangle signal
         self.Plot4 = pg.PlotWidget(self.centralwidget, polar=True)
         self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  
         self.Plot4.setObjectName("Plot4")
-        # self.Plot4.scene().sigMouseClicked.connect(self.plotRightClicked)  # Connect mouse click to the plot
+        # self.Plot4.scene().sigMouseClicked.connect(self.plotRightClicked)  
         self.Plot4.setLabel('bottom', "Theta")
         self.Plot4.setLabel('left', "Angle")
         
@@ -416,8 +420,8 @@ class Ui_MainWindow(object):
         self.Plot2.enableAutoRange()  
         self.Plot2.showGrid(x=True, y=True)  
 
-        # self.Plot3.enableAutoRange()  
-        # self.Plot3.showGrid(x=True, y=True)  
+        self.Plot3.enableAutoRange()  
+        self.Plot3.showGrid(x=True, y=True)  
 
         self.Plot4.enableAutoRange()  
         self.Plot4.showGrid(x=True, y=True)  
@@ -425,7 +429,7 @@ class Ui_MainWindow(object):
         # Create a timer to update the plot dynamically
         self.timer = QtCore.QTimer()
         # Adjust the interval as needed
-        self.timer.setInterval(1000)  
+        self.timer.setInterval(100)  
         self.timer.timeout.connect(self.update_plot)
         self.timer.start()
 
@@ -482,30 +486,18 @@ class Ui_MainWindow(object):
         self.update_non_rectangle_plot()
         
     def update_real_time_plot(self):
-        # Initiate graph 3 for real-time signal
-        self.Plot3 = pg.PlotWidget(self.centralwidget)
-        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  
-        self.Plot3.setObjectName("Plot3")
-        self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  
-        # Set axis labels
-        self.Plot3.setLabel('bottom', "Time (s)")
-        self.Plot3.setLabel('left', "Real Time Signal")
-        self.curve = self.Plot3.plot()
-        
-        self.Plot3.enableAutoRange()  
-        self.Plot3.showGrid(x=True, y=True)  
-        
-        # Initialize list to append real-time data
-        data = []
         # Get new data point
         timestamp, price = update_real_time_data()
+
         # Add new data point to list
-        data.append((timestamp, price))
+        self.data.append((timestamp, price))
+
         # Update the curve with all data points
-        self.curve.setData(x=[d[0] for d in data], y=[d[1] for d in data])
+        self.curve.setData(x=[d[0] for d in self.data], y=[d[1] for d in self.data])
+
         # Limit the number of data points for performance
-        if len(data) > 50:
-            data = data[-50:]
+        if len(self.data) > 100:
+            self.data = self.data[-100:]
             
     def update_non_rectangle_plot(self):
         # Update the plot with new data points for non-rectangle signal
