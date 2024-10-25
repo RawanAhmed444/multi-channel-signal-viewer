@@ -10,9 +10,7 @@ from logic.calculate_stats import calculate_statistics
 from logic.take_snapshot import take_snapshot
 from logic.generate_pdf import generate_pdf
 from logic.move_signals import select_signal, move_selected_signal
-import pandas as pd
-import matplotlib.pyplot as plt
-
+from pyqtgraph.Qt import QtGui, QtCore
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -96,4 +94,6 @@ if __name__ == "__main__":
     mainWindow = MainWindow()
     mainWindow.show()
     sys.exit(app.exec_())
+    
+   
 

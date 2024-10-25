@@ -6,6 +6,7 @@ from logic.signal_processing import convert_signal_values_to_numeric
 from logic.real_time_data import update_real_time_data
 import matplotlib.pyplot as plt
 from logic.calculate_stats import calculate_statistics
+from PyQt5.QtWidgets import QGraphicsEllipseItem
 
 class CustomMessageBox(QtWidgets.QMessageBox):
     def __init__(self, parent=None):
@@ -396,13 +397,18 @@ class Ui_MainWindow(object):
         self.Plot3.setLabel('left', "Real Time Signal")
         self.curve = self.Plot3.plot(pen = 'g')
 
-         # Initiate graph 4 for non-rectangle signal
-        self.Plot4 = pg.PlotWidget(self.centralwidget, polar=True)
-        self.Plot4.setGeometry(QtCore.QRect(800, 390, 541, 201))  
-        self.Plot4.setObjectName("Plot4")
-        # self.Plot4.scene().sigMouseClicked.connect(self.plotRightClicked)  
-        self.Plot4.setLabel('bottom', "Theta")
-        self.Plot4.setLabel('left', "Angle")
+        self.Plot4 = pg.plot()
+        self.Plot4.setAspectLocked()
+
+        # Add polar grid lines
+        self.Plot4.addLine(x=0, pen=0.2)
+        self.Plot4.addLine(y=0, pen=0.2)
+        for r in range(2, 20, 2):
+            circle = QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
+            circle.setPen(pg.mkPen(0.2))
+            self.Plot4.addItem(circle)
+        # self.Plot4.setLabel('bottom', "Theta")
+        # self.Plot4.setLabel('left', "Angle")
         
         self.plotData()
 
@@ -423,8 +429,8 @@ class Ui_MainWindow(object):
         self.Plot3.enableAutoRange()  
         self.Plot3.showGrid(x=True, y=True)  
 
-        self.Plot4.enableAutoRange()  
-        self.Plot4.showGrid(x=True, y=True)  
+        # self.Plot4.enableAutoRange()  
+        # self.Plot4.showGrid(x=True, y=True)  
 
         # Create a timer to update the plot dynamically
         self.timer = QtCore.QTimer()
