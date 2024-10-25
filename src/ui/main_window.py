@@ -16,15 +16,16 @@ from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 from scipy import interpolate
 from scipy.interpolate import interp1d
+from PyQt5 import QtWidgets, QtCore
 
-class CustomMessageBox(QtWidgets.QMessageBox):
+class NewWindow(QtWidgets.QMessageBox):
     def __init__(self, parent=None):
-        super(CustomMessageBox, self).__init__(parent)
+        super(NewWindow, self).__init__(parent)
         self.setStyleSheet("""
-            CustomMessageBox {
+            NewWindow {
                 background-color: black;  /* Black background */
                 border: 1px solid white;   /* White border */
-                border-radius: 10px;      /* Rounded corners */
+                border-radius: 3px;      /* Rounded corners */
             }
             QLabel {
                 color: white;              /* White text */
@@ -46,11 +47,15 @@ class CustomMessageBox(QtWidgets.QMessageBox):
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint)  # Remove title bar
         self.setContentsMargins(10, 10, 10, 10)  # Set margins to prevent clipping
 
+        # Change the standard button to "Close" instead of "OK"
+        self.setStandardButtons(QtWidgets.QMessageBox.Close)
+
     def setTitle(self, title):
         label = QtWidgets.QLabel(title)
         label.setStyleSheet("font-size: 24px; font-weight: bold; color: white; text-align: center;")
         label.setAlignment(QtCore.Qt.AlignCenter)
         self.layout().addWidget(label, 0, 0, 1, 2)  # Add the label to the layout
+
 
 class StatisticsPopup(QtWidgets.QDialog):
     def __init__(self, parent=None):
@@ -152,7 +157,6 @@ class RightClickPopup(QtWidgets.QMenu):
         self.addSeparator()
         self.addAction("Statistics", self.show_statistics)
 
-
     def change_name(self):
         self.setStyleSheet("""
             QInputDialog {
@@ -205,10 +209,9 @@ class RightClickPopup(QtWidgets.QMenu):
             self.close() 
 
     def swap_signals(self):
-        """Swap the signals between Plot1 and Plot2"""
         self.hide()
         if self.main_window:
-            self.main_window.swap_signals_between_plots()
+            self.main_window.swap_signals_between_plots(self.Plot)
         self.close()
   
     def showEvent(self, event):
@@ -229,23 +232,19 @@ class Ui_MainWindow(object):
         self.plot_index_plot1 = 0  # Reset the plot index for Plot1
         self.plot_index_plot2 = 0  # Reset the plot index for Plot1
 
+        self.x1, self.y1 = [], []
+        self.x2, self.y2 = [], []
+
         self.parent = parent
-        self.rois = []  
-        self.region_count = 0
-        self.x1, self.y1 = [0], [0]
-        self.x2, self.y2 = [0], [0]
-        self.segment1 = None  
-        self.segment2 = None  
+        self.segments = []  # Store selected segments for interpolation
         self.last_interpolation_curve = None
         self.selected_signal_data = None
 
         self.timer1 = QtCore.QTimer()
         self.timer1.setInterval(150) 
-        # self.timer1.timeout.connect(lambda: self.update_plot(1))
 
         self.timer2 = QtCore.QTimer()
         self.timer2.setInterval(150)  
-        # self.timer2.timeout.connect(lambda: self.update_plot(2))
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -261,57 +260,35 @@ class Ui_MainWindow(object):
         # Initialize plots
         self.initPlots()
         
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1920, 21))
-        self.menubar.setObjectName("menubar")
-        self.menubar.setStyleSheet("""
-            QMenuBar {
-            background-color: #353535;  /* Dark gray background */
-            border: 1px solid #636161;  /* White border */
-            }
-            QMenuBar::item {
-            color: #ffffff;             /* White text */
-            font-size: 16px;            /* Font size */
-            font-weight: bold;          /* Bold text */
-            font-family: 'Arial', 'Helvetica', sans-serif; /* Elegant font */
-            }
-            QMenuBar::item:selected {
-            background-color: #403F3F;  /* Lighter gray for hover */
-            }
-            QMenuBar::separator {
-            height: 1px;                /* Height of the separator */
-            background: #636161;        /* Color of the separator */
-            }
-        """)
-
-        # Add menus to the menu bar
-        self.menuSignal = QtWidgets.QMenu(self.menubar)
-        self.menuSignal.setObjectName("menuSignal")
-        self.menuRealTime = QtWidgets.QMenu(self.menubar)
-        self.menuRealTime.setObjectName("menuRealTime")
-        self.menuNonRectangular = QtWidgets.QMenu(self.menubar)
-        self.menuNonRectangular.setObjectName("menuNonRectangular")
-
-        # Add menus to the menubar
-        self.menubar.addAction(self.menuSignal.menuAction())
-        self.menubar.addAction(self.menuRealTime.menuAction())
-        self.menubar.addAction(self.menuNonRectangular.menuAction())
-
-        # Set the menubar to the main window
-        MainWindow.setMenuBar(self.menubar)
-
         # Set the central widget
         MainWindow.setCentralWidget(self.centralwidget)
-
-        # Set text for menus and actions
-        self.menuSignal.setTitle("Signal")
-        self.menuRealTime.setTitle("Real-Time")
-        self.menuNonRectangular.setTitle("Non-Rectangular")
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    def show_real_time_popup(self):
+        msg_box = NewWindow(self.parent)
+        msg_box.setTitle("Real-Time")
+        msg_box.setText("Real-time data visualization is not yet implemented.")
+        msg_box.setFixedSize(1200, 400)  # Set the size of the popup
+        msg_box.exec_()
+
+    def show_non_rectangular_popup(self):
+        msg_box = NewWindow(self.parent)
+        msg_box.setTitle("Non-Rectangular")
+        msg_box.setText("Non-rectangular data visualization is not yet implemented.")
+        msg_box.setFixedSize(600, 400)  # Set the size of the popup
+        msg_box.exec_()
+
     def initButtons(self):
+
+
+        self.RealTimeButton = self.createButton("Real-Time", 800, 10, size=(150, 50), font_size=20)
+        self.NonRectangularButton = self.createButton("Non-Rectangular", 1000, 10, size=(200, 50), font_size=20)
+
+        self.RealTimeButton.clicked.connect(self.show_real_time_popup)
+        self.NonRectangularButton.clicked.connect(self.show_non_rectangular_popup)
+
         # Button configurations (shifted down by 50 pixels)
         self.Signal1 = self.createButton("Signal", 15, 70)   # Left Signal button with icon
         self.Link = self.createButton("Link Plot", 300, 440, size=(280, 50))  
@@ -411,11 +388,10 @@ class Ui_MainWindow(object):
             border-radius: 12px; 
             }
         """)
-        self.slider.setMinimum(-2)
-        self.slider.setMaximum(4)
-        self.slider.setValue(2)
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(100)
+        self.slider.setValue(0)
 
-        # Connect the slider value change to the corresponding function
         self.slider.valueChanged.connect(self.update_distance)
 
         self.radioLinear.toggled.connect(self.perform_interpolation)
@@ -584,7 +560,6 @@ class Ui_MainWindow(object):
             f"    font-size: {font_size}px;       /* Font size */\n"  # Dynamic font size
             "    font-weight: bold;              /* Bold text */\n"            
             "    font-family: 'Georgia', 'Garamond', 'Times New Roman', serif; /* Elegant font */\n"
-            "    transition: all 0.3s ease;      /* Smooth transition for hover effect */\n"
             "}\n"
             "\n"
             "QPushButton:hover {\n"
@@ -608,7 +583,6 @@ class Ui_MainWindow(object):
             "    font-size: 16px;                /* Increased font size */\n"  # Increased size
             "    font-weight: bold;              /* Bold text */\n"            # Bold text
             "    font-family: 'Georgia', 'Garamond', 'Times New Roman', serif; /* Elegant font */\n"
-            "    transition: all 0.3s ease;      /* Smooth transition for hover effect */\n"
             "}\n"
             "\n"
             "QPushButton:hover {\n"
@@ -623,25 +597,59 @@ class Ui_MainWindow(object):
             "}\n"
         )
 
-    def update_distance(self, value):
-
-        distance = value 
-
+    def update_distance(self, value): 
         if hasattr(self, 'segments') and len(self.segments) == 2:
             segment1 = self.segments[0]
             segment2 = self.segments[1]
+            
+            x1_min, x1_max, _ = segment1
+            x2_min, x2_max, _ = segment2
 
-            x1_min, x1_max, plot = segment1  
-            x2_min, x2_max, _ = segment2  
+            # Store original data for the second segment 
+            if not hasattr(self, 'original_segment2_data'):
+                self.original_segment2_data = self.get_data_for_segment(segment2)  # Get original data for segment 2
 
-            # Update the second segment's minimum x value based on the distance
-            new_x2_min = x1_max + distance  
-            new_x2_max = new_x2_min + (x2_max - x2_min)
-            new_x2_min = max(new_x2_min, x1_min - 1) 
-            new_x2_max = new_x2_min + (x2_max - x2_min) 
+            # Calculate the distance adjustment
+            shift_amount = (x1_max - x2_min) * (1 - value / 100.0)
 
-            self.segments[1] = (new_x2_min, new_x2_max, plot)
+            # Update the x2_min and x2_max based on the shift amount
+            new_x2_min = x2_min + shift_amount
+            new_x2_max = x2_max + shift_amount
+            self.segments[1] = (new_x2_min, new_x2_max, segment2[2])
+
+            # Store the shifted data for the second segment
+            original_x_data, original_y_data = zip(*self.original_segment2_data)
+            shifted_x_data = np.array(original_x_data) + shift_amount
+            self.shifted_segment_data = list(zip(shifted_x_data, original_y_data))
+
+            # Re-plot the segments and adjust the x-axis range
             self.plot_selected_regions_on_plot3()
+            self.adjust_plot3_x_range(x1_min, max(new_x2_max, x1_max))
+
+
+    def adjust_plot3_x_range(self, x_min, x_max):
+        self.Plot3.setXRange(x_min, x_max)
+
+
+    def get_data_for_segment(self, segment):
+
+        x_min, x_max, source_plot = segment
+
+        # Retrieve the appropriate data based on the source plot
+        data = self.signal_data_plot1 if source_plot == self.Plot1 else self.signal_data_plot2
+
+        # Convert data to NumPy arrays for easier filtering
+        x_data = np.array([x for x, y in data])
+        y_data = np.array([y for x, y in data])
+
+        # Create a mask to select data within the range [x_min, x_max]
+        mask = (x_data >= x_min) & (x_data <= x_max)
+
+        # Filter x and y data
+        selected_x = x_data[mask]
+        selected_y = y_data[mask]
+
+        return list(zip(selected_x, selected_y))
 
     def plotRightClicked(self, event, plot):
         if event.button() == QtCore.Qt.RightButton:
@@ -664,6 +672,7 @@ class Ui_MainWindow(object):
 
         full_y_data = np.array(full_y_data)
         self.selected_signal_data = full_y_data
+
         if event.button() == QtCore.Qt.RightButton:
             context_menu = RightClickPopup(
             parent=self.parent,
@@ -673,7 +682,7 @@ class Ui_MainWindow(object):
         )
             context_menu.exec_(QPoint(int(event.screenPos().x()), int(event.screenPos().y()))) #show the menu at the mouse position 
 
-
+    
     def select_region(self, plot, event):
         mouse_point = plot.getViewBox().mapSceneToView(event.scenePos())
         x_pos = mouse_point.x()
@@ -681,7 +690,7 @@ class Ui_MainWindow(object):
         if not hasattr(self, 'region_start'):
             # First left-click: Start region selection
             self.region_start = x_pos
-            self.selection_rect = pg.LinearRegionItem([self.region_start, self.region_start], pen='b', brush=(100, 100, 255, 50))  # Light blue box
+            self.selection_rect = pg.LinearRegionItem([self.region_start, self.region_start], pen='b', brush=(100, 100, 255, 50))
             plot.addItem(self.selection_rect)
         else:
             # Second left-click: End region selection
@@ -692,137 +701,185 @@ class Ui_MainWindow(object):
                 self.segments = [] 
 
             # Store the new segment
-            self.segments.append((self.region_start, self.region_end, plot))  # Store the source plot
+            self.segments.append((self.region_start, self.region_end, plot))  
 
-            # Plot all selected segments on Plot3
+            # Plot selected segments on Plot3
             self.plot_selected_regions_on_plot3()
 
-            # Remove the selection rectangle after plotting
+            # Remove selection rectangle after plotting
             plot.removeItem(self.selection_rect)
 
-            # Reset the region selection for the next region
+            # Reset region selection for the next region
             del self.region_start, self.region_end
 
+    
     def plot_selected_regions_on_plot3(self):
-
+        # Clear the plot to start fresh
         self.Plot3.clear()
 
         if hasattr(self, 'segments'):
-            for segment in self.segments:
-                self.plot_selected_region(segment) 
+            # Plot the first segment
+            self.plot_selected_region(self.segments[0])
 
-            self.perform_interpolation()
+            # Plot the second segment if available
+            if len(self.segments) == 2:
+                if hasattr(self, 'shifted_segment_data'):
+                    shifted_x, shifted_y = zip(*self.shifted_segment_data)
+                    self.Plot3.plot(shifted_x, shifted_y, pen='b')
+                else:
+                    self.plot_selected_region(self.segments[1])
+
+                # Calculate overlap region
+                segment1 = self.segments[0]
+                segment2 = self.segments[1]
+                x1_min, x1_max, _ = segment1
+                x2_min, x2_max, _ = segment2
+
+                overlap_start = max(x1_min, x2_min)
+                overlap_end = min(x1_max, x2_max)
+
+                # Perform interpolation if needed
+                self.perform_interpolation(overlap_start, overlap_end)
+
 
     def plot_selected_region(self, segment):
         if segment is None:
-            return 
+            return
 
-        x_min, x_max, source_plot = segment 
-        x_data = self.x1 if source_plot == self.Plot1 else self.x2
-        y_data = self.y1 if source_plot == self.Plot1 else self.y2
+        # Unpack the segment tuple
+        x_min, x_max, source_plot = segment
 
-        # Get indices for the selected region, ensuring they are within bounds
-        start_index = max(0, (np.abs(np.array(x_data) - x_min)).argmin())
-        end_index = min(len(x_data) - 1, (np.abs(np.array(x_data) - x_max)).argmin() + 1)
+        data = self.signal_data_plot1 if source_plot == self.Plot1 else self.signal_data_plot2
 
-        # Extract data points for the selected region
-        selected_x = x_data[start_index:end_index]
-        selected_y = y_data[start_index:end_index]
+        x_data = np.array([x for x, y in data])
+        y_data = np.array([y for x, y in data])
+
+        # Create a mask to select data within the range [x_min, x_max]
+        mask = (x_data >= x_min) & (x_data <= x_max)
+
+        # Filter x and y data
+        selected_x = x_data[mask]
+        selected_y = y_data[mask]
 
         # Plot the selected region on Plot3
-        self.Plot3.plot(selected_x, selected_y, pen='b')  # Plot selected segment in blue
+        self.Plot3.plot(selected_x, selected_y, pen='b')
 
-        #  # Check for overlap with the previously plotted segments
-        # overlap = False
-        # for existing_segment in self.segments:
-        #     existing_x_min, existing_x_max, _ = existing_segment
-        #     if not (x_max < existing_x_min or x_min > existing_x_max):  # Check for overlap
-        #         print("overlap happened")
-        #         overlap = True
-        #         break
+    def perform_interpolation(self, overlap_start=None, overlap_end=None):
 
-        # # Plot the selected region on Plot3 with different styles based on overlap
-        # if overlap:
-        #     # Use a different color (like a light blue) for overlapping segments
-        #     self.Plot3.plot(selected_x, selected_y, pen='b', brush=(100, 100, 255, 150))  # Light blue box for overlap
-        # else:
-        #     # Normal color for non-overlapping segments
-        #     self.Plot3.plot(selected_x, selected_y, pen='b')  # Plot selected segment in blue
-
-    def perform_interpolation(self):
-        if self.last_interpolation_curve is not None:
+        if hasattr(self, 'last_interpolation_curve') and self.last_interpolation_curve is not None:
             self.Plot3.removeItem(self.last_interpolation_curve)
+
         if len(self.segments) == 2:
             segment1, segment2 = self.segments
             x1_min, x1_max, plot = segment1  
-            x2_min, x2_max, _ = segment2  
+            x2_min, x2_max, _ = segment2
 
-            x_values = [x1_max, x2_min]  # Last point of the first segment and first point of the second segment
+            if overlap_start is not None and overlap_end is not None and overlap_start < overlap_end:
+                x_values_overlap = np.linspace(overlap_start, overlap_end, num=100)
+                y_values_segment1_overlap = self.get_interpolated_y_values(segment1, x_values_overlap)
+                y_values_segment2_overlap = self.get_interpolated_y_values(segment2, x_values_overlap)
 
-            # Get y values corresponding to x values
-            y_values = [
-                self.get_y_value_for_x(self.x1 if plot == self.Plot1 else self.x2,
-                                        self.y1 if plot == self.Plot1 else self.y2, x1_max),  # Last point of first segment
-                self.get_y_value_for_x(self.x1 if plot == self.Plot1 else self.x2,
-                                        self.y1 if plot == self.Plot1 else self.y2, x2_min)   # First point of second segment
-            ]
+                y_values_avg = (y_values_segment1_overlap + y_values_segment2_overlap) / 2
 
-            # Determine the interpolation type
-            if self.radioLinear.isChecked():
-                x_interp = np.linspace(x1_max, x2_min, num=100) 
-                y_interp = np.interp(x_interp, x_values, y_values)
+                self.last_interpolation_curve = self.Plot3.plot(x_values_overlap, y_values_avg, pen='r')
 
-            elif self.radioQuadratic.isChecked():
-                if len(x_values) >= 3:
-                    coeffs = np.polyfit(x_values[:3], y_values + [self.get_y_value_for_x(self.x1 if plot1 == self.Plot1 else self.x2,
-                                                                                        self.y1 if plot1 == self.Plot1 else self.y2, x2_min)], 2)
-                else:
-                    coeffs = np.polyfit(x_values, y_values, 2)
-                poly_func = np.poly1d(coeffs)
-                x_interp = np.linspace(min(x_values), max(x_values), num=100)
-                y_interp = poly_func(x_interp)
+            else:
+                x_values = [x1_max, x2_min]
 
-            elif self.radioCubic.isChecked():
-                if len(x_values) == 4:
-                    coeffs = np.polyfit(x_values, y_values, 3)
-                else:
-                    coeffs = np.polyfit(x_values, y_values, 2) 
-                poly_func = np.poly1d(coeffs)
-                x_interp = np.linspace(min(x_values), max(x_values), num=100)
-                y_interp = poly_func(x_interp)
-            
-            self.last_interpolation_curve = self.Plot3.plot(x_interp, y_interp, pen='r') 
+                # Flatten the data arrays for segment 1 and 2
+                x_data1 = np.array([x for x, y in (self.signal_data_plot1 if plot == self.Plot1 else self.signal_data_plot2)]).flatten()
+                y_data1 = np.array([y for x, y in (self.signal_data_plot1 if plot == self.Plot1 else self.signal_data_plot2)]).flatten()
+                x_data2 = np.array([x for x, y in (self.signal_data_plot1 if plot == self.Plot1 else self.signal_data_plot2)]).flatten()
+                y_data2 = np.array([y for x, y in (self.signal_data_plot1 if plot == self.Plot1 else self.signal_data_plot2)]).flatten()
+
+                # Get y-values at the end points using updated segment values
+                y1_end = self.get_y_value_for_x(x_data1, y_data1, x1_max)
+                y2_start = self.get_y_value_for_x(x_data2, y_data2, x2_min)
+
+                if self.radioLinear.isChecked():
+                    x_interp = np.linspace(x1_max, x2_min, num=150)
+                    y_interp = np.interp(x_interp, x_values, [y1_end, y2_start])
+                elif self.radioQuadratic.isChecked():
+                    coeffs = np.polyfit(x_values, [y1_end, y2_start], 2)
+                    poly_func = np.poly1d(coeffs)
+                    x_interp = np.linspace(x1_max, x2_min, num=150)
+                    y_interp = poly_func(x_interp)
+                elif self.radioCubic.isChecked():
+                    coeffs = np.polyfit(x_values, [y1_end, y2_start], 3)
+                    poly_func = np.poly1d(coeffs)
+                    x_interp = np.linspace(x1_max, x2_min, num=150)
+                    y_interp = poly_func(x_interp)
+
+                self.last_interpolation_curve = self.Plot3.plot(x_interp, y_interp, pen='r')
+
 
     def get_y_value_for_x(self, x_data, y_data, x_value):
-        
-        idx = (np.abs(np.array(x_data) - x_value)).argmin()
-        return y_data[idx]
+        if len(x_data) == 0:
+            return None  
+        return np.interp(x_value, x_data, y_data)
 
-    def swap_signals_between_plots(self):
+
     
-        # Store current indices before the swap
-        current_index1 = self.plot_index1
-        current_index2 = self.plot_index2
+    def swap_signals_between_plots(self, clicked_plot):
 
-        # Swap x and y data of the plots
-        self.x1, self.x2 = self.x2, self.x1
-        self.y1, self.y2 = self.y2, self.y1
+        # Identify source and target plots based on the clicked plot
+        if clicked_plot == self.Plot1:
+            source_plot = self.Plot1
+            target_plot = self.Plot2
+            source_timer = self.timer1
+            target_timer = self.timer2
+            source_curves = self.curves_plot1
+            target_curves = self.curves_plot2
+            source_signal_data = self.signal_data_plot1
+            target_signal_data = self.signal_data_plot2
+            source_plot_index = self.plot_index_plot1
+            target_plot_index = self.plot_index_plot2
+        else:
+            source_plot = self.Plot2
+            target_plot = self.Plot1
+            source_timer = self.timer2
+            target_timer = self.timer1
+            source_curves = self.curves_plot2
+            target_curves = self.curves_plot1
+            source_signal_data = self.signal_data_plot2
+            target_signal_data = self.signal_data_plot1
+            source_plot_index = self.plot_index_plot2
+            target_plot_index = self.plot_index_plot1
 
-        self.Plot1.clear()
-        self.Plot2.clear()
+        source_timer.stop()
+        target_timer.stop()
 
-        # Set the x-axis limits to match the current positions after swap
-        self.Plot1.setXRange(self.x1[0], self.x1[min(current_index1, len(self.x1) - 1)])
-        self.Plot2.setXRange(self.x2[0], self.x2[min(current_index2, len(self.x2) - 1)])
+        # Ensure both source and target plots have data to swap
+        if len(source_curves) == 0 or len(target_curves) == 0:
+            print("Either source or target plot has no data to swap.")
+            return
 
-        # Plot the swapped signals starting from their current indices
-        if current_index1 < len(self.x1):
-            self.Plot1.plot(self.x1[current_index1:], self.y1[current_index1:], pen='r', clear=False)
-        if current_index2 < len(self.x2):
-            self.Plot2.plot(self.x2[current_index2:], self.y2[current_index2:], pen='b', clear=False)
+        # Get the current data from both plots
+        source_x_data, source_y_data = source_curves[0].getData()
+        target_x_data, target_y_data = target_curves[0].getData()
+
+        source_plot.clear()
+        target_plot.clear()
+
+        new_target_curve = target_plot.plot(source_x_data, source_y_data, pen='r')  
+        new_source_curve = source_plot.plot(target_x_data, target_y_data, pen='b')  
+
+        if clicked_plot == self.Plot1:
+            self.curves_plot1 = [new_source_curve]  
+            self.curves_plot2 = [new_target_curve]  
+            self.signal_data_plot1, self.signal_data_plot2 = target_signal_data, source_signal_data  
+            self.plot_index_plot1, self.plot_index_plot2 = target_plot_index, source_plot_index  
+        else:
+            self.curves_plot1 = [new_target_curve]  
+            self.curves_plot2 = [new_source_curve]  
+            self.signal_data_plot1, self.signal_data_plot2 = source_signal_data, target_signal_data  
+            self.plot_index_plot1, self.plot_index_plot2 = source_plot_index, target_plot_index  
+
+        source_timer.start()
+        target_timer.start()
 
         print("Signals swapped between Plot1 and Plot2")
-    
+
     def initPlots(self):
         self.Plot1 = pg.PlotWidget(self.centralwidget)
         self.Plot1.setGeometry(QtCore.QRect(180, 70, 800, 350)) 
@@ -857,12 +914,12 @@ class Ui_MainWindow(object):
         self.Plot3.setMenuEnabled(False)
         self.Plot3.scene().sigMouseClicked.connect(lambda event: self.plotRightClicked(event, self.Plot3))
 
-        # Example data for plotting
         self.plotData()
 
     def createCurve(self, Plot):
         curve = Plot.plot(clear=False)
         return curve
+
     def plotData(self):
         self.Plot1.enableAutoRange()
         self.Plot1.showGrid(x=True, y=True)  
@@ -917,8 +974,12 @@ class Ui_MainWindow(object):
     def update_plot(self, signal_data, curves, plot_id):
         if plot_id == 1:
             plot_index = self.plot_index_plot1
+            signal_data = self.signal_data_plot1
+            curves = self.curves_plot1
         elif plot_id == 2:
             plot_index = self.plot_index_plot2
+            signal_data = self.signal_data_plot2
+            curves = self.curves_plot2
 
         if self.play_stop_signals.is_playing(plot_id):
             # Loop through each signal and update the corresponding curve
@@ -941,9 +1002,10 @@ class Ui_MainWindow(object):
             # Increment the plot_index to move to the next data point
             if plot_id == 1:
                 self.plot_index_plot1 += 1
+                
             elif plot_id == 2:
                 self.plot_index_plot2 += 1
-
+                
             # Set the x-axis limits based on the first signal in the current plot
             # if signal_data:
             #     x_min = min(signal_data[0][0])  # Minimum x of the first signal
