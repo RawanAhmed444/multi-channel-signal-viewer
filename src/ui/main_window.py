@@ -3,7 +3,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QPoint
 import pyqtgraph as pg
 from pyqtgraph import PlotDataItem, mkPen
-from logic.signal_processing import convert_signal_values_to_numeric
+from logic.signal_processing import convert_signal_values_to_numeric, cartesian_to_polar
 from logic.real_time_data import update_real_time_data
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -17,6 +17,7 @@ from tkinter.filedialog import askopenfilename
 from scipy import interpolate
 from scipy.interpolate import interp1d
 from PyQt5 import QtWidgets, QtCore
+from PyQt5.QtWidgets import QGraphicsEllipseItem
 
 class NewWindow(QtWidgets.QMessageBox):
     def __init__(self, parent=None):
@@ -55,6 +56,7 @@ class NewWindow(QtWidgets.QMessageBox):
         label.setStyleSheet("font-size: 24px; font-weight: bold; color: white; text-align: center;")
         label.setAlignment(QtCore.Qt.AlignCenter)
         self.layout().addWidget(label, 0, 0, 1, 2)  # Add the label to the layout
+        
 
 
 class StatisticsPopup(QtWidgets.QDialog):
@@ -223,6 +225,17 @@ class RightClickPopup(QtWidgets.QMenu):
 
 class Ui_MainWindow(object):
     def __init__(self, play_stop_signals, parent=None):
+        # Initialize plot_index  and time window size
+        self.plot_index = 0  
+        self.time_size = 200
+        
+         # Initialize the non rectangle signal file and its axis
+        non_rectangle_signal = "src\\data\\signals\\radar.csv"
+        self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 1, 2)
+        
+        # Initialize list to append real-time data
+        self.data = []
+        
         super().__init__()
         self.play_stop_signals = play_stop_signals
         self.signal_data_plot1 = []  # List to store (x, y) pairs for Plot1
@@ -266,28 +279,113 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
-    def show_real_time_popup(self):
-        msg_box = NewWindow(self.parent)
-        msg_box.setTitle("Real-Time")
-        msg_box.setText("Real-time data visualization is not yet implemented.")
-        msg_box.setFixedSize(1200, 400)  # Set the size of the popup
-        msg_box.exec_()
+    # def show_real_time_popup(self):
+    #     msg_box = NewWindow(self.parent)
+    #     msg_box.setTitle("Real-Time")
+    #     msg_box.setText("Real-time data visualization is not yet implemented.")
+    #     msg_box.setFixedSize(1200, 400)  # Set the size of the popup
+    #     msg_box.exec_()
 
-    def show_non_rectangular_popup(self):
-        msg_box = NewWindow(self.parent)
-        msg_box.setTitle("Non-Rectangular")
-        msg_box.setText("Non-rectangular data visualization is not yet implemented.")
-        msg_box.setFixedSize(600, 400)  # Set the size of the popup
-        msg_box.exec_()
+    # def show_non_rectangular_popup(self):
+    #     msg_box = NewWindow(self.parent)
+    #     msg_box.setTitle("Non-Rectangular")
+    #     msg_box.setText("Non-rectangular data visualization is not yet implemented.")
+    #     msg_box.setFixedSize(600, 400)  # Set the size of the popup
+    #     msg_box.init_non_rectangular_plot(self)
+    #     msg_box.exec_()
+    
+    def init_real_time_plot(self):
+        # Initiate graph 3 for real-time signal
+        self.Plot3 = pg.plot()
+        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  
+        self.Plot3.setObjectName("Plot3")
+        # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  
+        # Set axis labels
+        self.Plot3.setLabel('bottom', "Time (s)")
+        self.Plot3.setLabel('left', "Real Time Signal")
+        self.curve = self.Plot3.plot(pen = 'g')
+        
+        self.plot_real_time_data()
+        
+    def plot_real_time_data(self):
+        self.Plot3.enableAutoRange()  
+        self.Plot3.showGrid(x=True, y=True)
 
+        # Create a timer to update the plot dynamically
+        self.timer = QtCore.QTimer()
+        # Adjust the interval as needed
+        self.timer.setInterval(100)  
+        self.timer.timeout.connect(self.update_real_time_plot)
+        self.timer.start()
+        
+    def update_real_time_plot(self):
+        # Get new data point
+        timestamp, price = update_real_time_data()
+
+        # Add new data point to list
+        self.data.append((timestamp, price))
+
+        # Update the curve with all data points
+        self.curve.setData(x=[d[0] for d in self.data], y=[d[1] for d in self.data])
+
+        # Limit the number of data points for performance
+        if len(self.data) > 100:
+            self.data = self.data[-100:]
+        
+    def init_non_rectangular_plot(self):
+        self.Plot4 = pg.plot()
+        self.Plot4.setAspectLocked()
+
+        # Add polar grid lines
+        self.Plot4.addLine(x=0, pen=0.2)
+        self.Plot4.addLine(y=0, pen=0.2)
+        for r in range(2, 20, 2):
+            circle = QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
+            circle.setPen(pg.mkPen(0.2))
+            self.Plot4.addItem(circle)
+        self.Plot4.setLabel('bottom', "Theta")
+        self.Plot4.setLabel('left', "Radial Distance")
+        
+        self.plot_non_rectangular_data()
+        
+    def plot_non_rectangular_data(self):
+        self.Plot4.enableAutoRange()  
+        self.Plot4.showGrid(x=True, y=True)
+
+        # Create a timer to update the plot dynamically
+        self.timer = QtCore.QTimer()
+        # Adjust the interval as needed
+        self.timer.setInterval(100)  
+        self.timer.timeout.connect(self.update_non_rectangle_plot)
+        self.timer.start()
+    
+    def update_non_rectangle_plot(self):
+        # Update the plot with new data points for non-rectangle signal
+        if self.plot_index < len(self.x4):
+            self.plot_index += 1
+
+            # Calculate the start and end indices for the dynamic time window
+            start_index = max(self.plot_index - self.time_size, 0)  
+            end_index = self.plot_index
+            
+            # Calculate theta (angle) and radial distance (r)
+            theta = np.arctan2(self.y4[start_index:end_index], self.x4[start_index:end_index])
+            r = np.sqrt(self.x4[start_index:end_index]**2 + self.y4[start_index:end_index]**2)
+
+            # Update the plot with polar coordinates
+            self.Plot4.plot(theta, r, pen='y', clear=False)
+            
+            # Adjust the pause time for animation speed
+            plt.pause(0.01)
+        
     def initButtons(self):
 
 
         self.RealTimeButton = self.createButton("Real-Time", 800, 10, size=(150, 50), font_size=20)
         self.NonRectangularButton = self.createButton("Non-Rectangular", 1000, 10, size=(200, 50), font_size=20)
 
-        self.RealTimeButton.clicked.connect(self.show_real_time_popup)
-        self.NonRectangularButton.clicked.connect(self.show_non_rectangular_popup)
+        self.RealTimeButton.clicked.connect(self.init_real_time_plot)
+        self.NonRectangularButton.clicked.connect(self.init_non_rectangular_plot)
 
         # Button configurations (shifted down by 50 pixels)
         self.Signal1 = self.createButton("Signal", 15, 70)   # Left Signal button with icon
