@@ -10,7 +10,6 @@ from logic.calculate_stats import calculate_statistics
 from logic.take_snapshot import take_snapshot
 from logic.generate_pdf import generate_pdf
 from logic.move_signals import select_signal, move_selected_signal
-from pyqtgraph.Qt import QtGui, QtCore
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
