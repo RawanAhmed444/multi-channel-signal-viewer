@@ -3,7 +3,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QPoint
 import pyqtgraph as pg
 from pyqtgraph import PlotDataItem, mkPen
-from logic.signal_processing import convert_signal_values_to_numeric
+from logic.signal_processing import convert_signal_values_to_numeric, cartesian_to_polar
 from logic.real_time_data import update_real_time_data
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -16,15 +16,17 @@ from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 from scipy import interpolate
 from scipy.interpolate import interp1d
+from PyQt5 import QtWidgets, QtCore
+from PyQt5.QtWidgets import QGraphicsEllipseItem
 
-class CustomMessageBox(QtWidgets.QMessageBox):
+class NewWindow(QtWidgets.QMessageBox):
     def __init__(self, parent=None):
-        super(CustomMessageBox, self).__init__(parent)
+        super(NewWindow, self).__init__(parent)
         self.setStyleSheet("""
-            CustomMessageBox {
+            NewWindow {
                 background-color: black;  /* Black background */
                 border: 1px solid white;   /* White border */
-                border-radius: 10px;      /* Rounded corners */
+                border-radius: 3px;      /* Rounded corners */
             }
             QLabel {
                 color: white;              /* White text */
@@ -46,11 +48,16 @@ class CustomMessageBox(QtWidgets.QMessageBox):
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint)  # Remove title bar
         self.setContentsMargins(10, 10, 10, 10)  # Set margins to prevent clipping
 
+        # Change the standard button to "Close" instead of "OK"
+        self.setStandardButtons(QtWidgets.QMessageBox.Close)
+
     def setTitle(self, title):
         label = QtWidgets.QLabel(title)
         label.setStyleSheet("font-size: 24px; font-weight: bold; color: white; text-align: center;")
         label.setAlignment(QtCore.Qt.AlignCenter)
         self.layout().addWidget(label, 0, 0, 1, 2)  # Add the label to the layout
+        
+
 
 class StatisticsPopup(QtWidgets.QDialog):
     def __init__(self, parent=None):
@@ -152,7 +159,6 @@ class RightClickPopup(QtWidgets.QMenu):
         self.addSeparator()
         self.addAction("Statistics", self.show_statistics)
 
-
     def change_name(self):
         self.setStyleSheet("""
             QInputDialog {
@@ -219,6 +225,17 @@ class RightClickPopup(QtWidgets.QMenu):
 
 class Ui_MainWindow(object):
     def __init__(self, play_stop_signals, parent=None):
+        # Initialize plot_index  and time window size
+        self.plot_index = 0  
+        self.time_size = 200
+        
+         # Initialize the non rectangle signal file and its axis
+        non_rectangle_signal = "src\\data\\signals\\radar.csv"
+        self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 1, 2)
+        
+        # Initialize list to append real-time data
+        self.data = []
+        
         super().__init__()
         self.play_stop_signals = play_stop_signals
         self.signal_data_plot1 = []  # List to store (x, y) pairs for Plot1
@@ -256,57 +273,119 @@ class Ui_MainWindow(object):
         # Initialize plots
         self.initPlots()
         
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1920, 21))
-        self.menubar.setObjectName("menubar")
-        self.menubar.setStyleSheet("""
-            QMenuBar {
-            background-color: #353535;  /* Dark gray background */
-            border: 1px solid #636161;  /* White border */
-            }
-            QMenuBar::item {
-            color: #ffffff;             /* White text */
-            font-size: 16px;            /* Font size */
-            font-weight: bold;          /* Bold text */
-            font-family: 'Arial', 'Helvetica', sans-serif; /* Elegant font */
-            }
-            QMenuBar::item:selected {
-            background-color: #403F3F;  /* Lighter gray for hover */
-            }
-            QMenuBar::separator {
-            height: 1px;                /* Height of the separator */
-            background: #636161;        /* Color of the separator */
-            }
-        """)
-
-        # Add menus to the menu bar
-        self.menuSignal = QtWidgets.QMenu(self.menubar)
-        self.menuSignal.setObjectName("menuSignal")
-        self.menuRealTime = QtWidgets.QMenu(self.menubar)
-        self.menuRealTime.setObjectName("menuRealTime")
-        self.menuNonRectangular = QtWidgets.QMenu(self.menubar)
-        self.menuNonRectangular.setObjectName("menuNonRectangular")
-
-        # Add menus to the menubar
-        self.menubar.addAction(self.menuSignal.menuAction())
-        self.menubar.addAction(self.menuRealTime.menuAction())
-        self.menubar.addAction(self.menuNonRectangular.menuAction())
-
-        # Set the menubar to the main window
-        MainWindow.setMenuBar(self.menubar)
-
         # Set the central widget
         MainWindow.setCentralWidget(self.centralwidget)
-
-        # Set text for menus and actions
-        self.menuSignal.setTitle("Signal")
-        self.menuRealTime.setTitle("Real-Time")
-        self.menuNonRectangular.setTitle("Non-Rectangular")
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    # def show_real_time_popup(self):
+    #     msg_box = NewWindow(self.parent)
+    #     msg_box.setTitle("Real-Time")
+    #     msg_box.setText("Real-time data visualization is not yet implemented.")
+    #     msg_box.setFixedSize(1200, 400)  # Set the size of the popup
+    #     msg_box.exec_()
+
+    # def show_non_rectangular_popup(self):
+    #     msg_box = NewWindow(self.parent)
+    #     msg_box.setTitle("Non-Rectangular")
+    #     msg_box.setText("Non-rectangular data visualization is not yet implemented.")
+    #     msg_box.setFixedSize(600, 400)  # Set the size of the popup
+    #     msg_box.init_non_rectangular_plot(self)
+    #     msg_box.exec_()
+    
+    def init_real_time_plot(self):
+        # Initiate graph 3 for real-time signal
+        self.Plot3 = pg.plot()
+        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  
+        self.Plot3.setObjectName("Plot3")
+        # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  
+        # Set axis labels
+        self.Plot3.setLabel('bottom', "Time (s)")
+        self.Plot3.setLabel('left', "Real Time Signal")
+        self.curve = self.Plot3.plot(pen = 'g')
+        
+        self.plot_real_time_data()
+        
+    def plot_real_time_data(self):
+        self.Plot3.enableAutoRange()  
+        self.Plot3.showGrid(x=True, y=True)
+
+        # Create a timer to update the plot dynamically
+        self.timer = QtCore.QTimer()
+        # Adjust the interval as needed
+        self.timer.setInterval(100)  
+        self.timer.timeout.connect(self.update_real_time_plot)
+        self.timer.start()
+        
+    def update_real_time_plot(self):
+        # Get new data point
+        timestamp, price = update_real_time_data()
+
+        # Add new data point to list
+        self.data.append((timestamp, price))
+
+        # Update the curve with all data points
+        self.curve.setData(x=[d[0] for d in self.data], y=[d[1] for d in self.data])
+
+        # Limit the number of data points for performance
+        if len(self.data) > 100:
+            self.data = self.data[-100:]
+        
+    def init_non_rectangular_plot(self):
+        self.Plot4 = pg.plot()
+        self.Plot4.setAspectLocked()
+
+        # Add polar grid lines
+        self.Plot4.addLine(x=0, pen=0.2)
+        self.Plot4.addLine(y=0, pen=0.2)
+        for r in range(2, 20, 2):
+            circle = QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
+            circle.setPen(pg.mkPen(0.2))
+            self.Plot4.addItem(circle)
+        self.Plot4.setLabel('bottom', "Theta")
+        self.Plot4.setLabel('left', "Radial Distance")
+        
+        self.plot_non_rectangular_data()
+        
+    def plot_non_rectangular_data(self):
+        self.Plot4.enableAutoRange()  
+        self.Plot4.showGrid(x=True, y=True)
+
+        # Create a timer to update the plot dynamically
+        self.timer = QtCore.QTimer()
+        # Adjust the interval as needed
+        self.timer.setInterval(100)  
+        self.timer.timeout.connect(self.update_non_rectangle_plot)
+        self.timer.start()
+    
+    def update_non_rectangle_plot(self):
+        # Update the plot with new data points for non-rectangle signal
+        if self.plot_index < len(self.x4):
+            self.plot_index += 1
+
+            # Calculate the start and end indices for the dynamic time window
+            start_index = max(self.plot_index - self.time_size, 0)  
+            end_index = self.plot_index
+            
+            # Calculate theta (angle) and radial distance (r)
+            theta = np.arctan2(self.y4[start_index:end_index], self.x4[start_index:end_index])
+            r = np.sqrt(self.x4[start_index:end_index]**2 + self.y4[start_index:end_index]**2)
+
+            # Update the plot with polar coordinates
+            self.Plot4.plot(theta, r, pen='y', clear=False)
+            
+            # Adjust the pause time for animation speed
+            plt.pause(0.01)
+        
     def initButtons(self):
+
+
+        self.RealTimeButton = self.createButton("Real-Time", 800, 10, size=(150, 50), font_size=20)
+        self.NonRectangularButton = self.createButton("Non-Rectangular", 1000, 10, size=(200, 50), font_size=20)
+
+        self.RealTimeButton.clicked.connect(self.init_real_time_plot)
+        self.NonRectangularButton.clicked.connect(self.init_non_rectangular_plot)
 
         # Button configurations (shifted down by 50 pixels)
         self.Signal1 = self.createButton("Signal", 15, 70)   # Left Signal button with icon
@@ -579,7 +658,6 @@ class Ui_MainWindow(object):
             f"    font-size: {font_size}px;       /* Font size */\n"  # Dynamic font size
             "    font-weight: bold;              /* Bold text */\n"            
             "    font-family: 'Georgia', 'Garamond', 'Times New Roman', serif; /* Elegant font */\n"
-            "    transition: all 0.3s ease;      /* Smooth transition for hover effect */\n"
             "}\n"
             "\n"
             "QPushButton:hover {\n"
@@ -603,7 +681,6 @@ class Ui_MainWindow(object):
             "    font-size: 16px;                /* Increased font size */\n"  # Increased size
             "    font-weight: bold;              /* Bold text */\n"            # Bold text
             "    font-family: 'Georgia', 'Garamond', 'Times New Roman', serif; /* Elegant font */\n"
-            "    transition: all 0.3s ease;      /* Smooth transition for hover effect */\n"
             "}\n"
             "\n"
             "QPushButton:hover {\n"
