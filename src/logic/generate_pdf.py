@@ -2,15 +2,14 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from io import BytesIO
-from PIL import Image  # Make sure to install Pillow
-from logic.calculate_stats import calculate_statistics  # Ensure to import this correctly
+from PIL import Image  
+from logic.calculate_stats import calculate_statistics  
 
 def generate_pdf(snapshots, statistics_data, file_name):
-    """Generate a PDF with snapshots and their corresponding statistics."""
     
     with PdfPages(file_name) as pdf:
         images_per_row = 1
-        images_per_column = 2  # Adjust this depending on your layout preference
+        images_per_column = 2 
 
         num_snapshots = len(snapshots)
         total_pages = (num_snapshots // (images_per_row * images_per_column)) + 1
@@ -33,7 +32,7 @@ def generate_pdf(snapshots, statistics_data, file_name):
                     axs[i].axis('off')
                     axs[i].set_title(f'Snapshot {index + 1}', fontsize=10)
 
-                    print(f"Snapshot {index + 1} statistics: {statistics_data[index]}")  # Debugging line
+                    print(f"Snapshot {index + 1} statistics: {statistics_data[index]}")
 
                     # Create statistics table below each plot
                     stats = statistics_data[index]
@@ -46,7 +45,7 @@ def generate_pdf(snapshots, statistics_data, file_name):
                     ]
                     
                     axs[i].table(cellText=table_data, colWidths=[0.2, 0.2], cellLoc='center',
-                                 loc='bottom', bbox=[0.0, -0.35, 1, 0.3])  # Adjust position with bbox
+                                 loc='bottom', bbox=[0.0, -0.35, 1, 0.3]) 
                 else:
                     axs[i].axis('off')  # Hide any empty subplot areas
 

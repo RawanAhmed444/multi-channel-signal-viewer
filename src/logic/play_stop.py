@@ -7,7 +7,7 @@ class PlayStopSignals:
 
     def start_signals(self):
         for plot_id in self.plot_states:
-            self.plot_states[plot_id] = True  # Set to running
+            self.plot_states[plot_id] = True 
 
     def is_playing(self, plot_id):
         return self.plot_states.get(plot_id, False)

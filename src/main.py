@@ -33,7 +33,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.Snapshot2.clicked.connect(lambda: self.take_snapshot(self.ui.Plot2, "Plot2"))
         self.ui.Snapshot3.clicked.connect(lambda: self.take_snapshot(self.ui.Plot3, "Plot3"))
      
-
         # Connect buttons to the same toggle function
         self.ui.Play_stop1.clicked.connect(lambda: self.ui.toggle_play_stop(1))
         self.ui.Play_stop2.clicked.connect(lambda: self.ui.toggle_play_stop(2))
