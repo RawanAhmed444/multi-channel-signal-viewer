@@ -252,6 +252,8 @@ class Ui_MainWindow(object):
         self.segments = []  # Store selected segments for interpolation
         self.last_interpolation_curve = None
         self.selected_signal_data = None
+        self.original_segment2_data = None  # Store original x-data for segment 2
+
 
         self.timer1 = QtCore.QTimer()
         self.timer1.setInterval(150) 
@@ -489,7 +491,6 @@ class Ui_MainWindow(object):
         self.slider.setMinimum(0)
         self.slider.setMaximum(100)
         self.slider.setValue(0)
-
         self.slider.valueChanged.connect(self.update_distance)
 
         self.radioLinear.toggled.connect(self.perform_interpolation)
@@ -695,48 +696,57 @@ class Ui_MainWindow(object):
             "}\n"
         )
 
-    def update_distance(self, value): 
+    def update_distance(self, value):
         if hasattr(self, 'segments') and len(self.segments) == 2:
             segment1 = self.segments[0]
             segment2 = self.segments[1]
-            
+
             x1_min, x1_max, _ = segment1
             x2_min, x2_max, _ = segment2
 
             # Store original data for the second segment 
-            if not hasattr(self, 'original_segment2_data'):
-                self.original_segment2_data = self.get_data_for_segment(segment2)  # Get original data for segment 2
+            if self.original_segment2_data is None:
+                self.original_segment2_data = self.get_data_for_segment(segment2)
+                
+                if self.original_segment2_data is None:
+                    print("Error: No data found for segment 2.")
+                    return
 
-            # Calculate the distance adjustment
-            shift_amount = (x1_max - x2_min) * (1 - value / 100.0)
+            # Calculate the minimum allowed distance to avoid overlap
+            min_distance = x1_max - x1_min + 1 
 
-            # Update the x2_min and x2_max based on the shift amount
-            new_x2_min = x2_min + shift_amount
-            new_x2_max = x2_max + shift_amount
+            # Calculate shift amount
+            shift_amount = (x2_min - x1_max - min_distance) * (1 - value / 100.0)
+
+            # Update x positions for segment2 based on the slider
+            new_x2_min = x2_min - shift_amount
+            new_x2_max = x2_max - shift_amount
             self.segments[1] = (new_x2_min, new_x2_max, segment2[2])
 
-            # Store the shifted data for the second segment
-            original_x_data, original_y_data = zip(*self.original_segment2_data)
-            shifted_x_data = np.array(original_x_data) + shift_amount
-            self.shifted_segment_data = list(zip(shifted_x_data, original_y_data))
+            # Store the latest new_x2_min for interpolation reference
+            self.current_x2_min = new_x2_min
+
+            # Shift all x-values of the second segment if the original data is available
+            try:
+                if self.original_segment2_data is not None:
+                    original_x_data, original_y_data = zip(*self.original_segment2_data)
+                    shifted_x_data = np.array(original_x_data) - shift_amount
+                    self.shifted_segment_data = list(zip(shifted_x_data, original_y_data))
+            except TypeError as e:
+                print("Error during data transformation:", e)
+                return
 
             # Re-plot the segments and adjust the x-axis range
             self.plot_selected_regions_on_plot3()
-            self.adjust_plot3_x_range(x1_min, max(new_x2_max, x1_max))
-
-
-    def adjust_plot3_x_range(self, x_min, x_max):
-        self.Plot3.setXRange(x_min, x_max)
-
+            self.Plot3.setXRange(x1_min, new_x2_max)
 
     def get_data_for_segment(self, segment):
-
         x_min, x_max, source_plot = segment
 
         # Retrieve the appropriate data based on the source plot
         data = self.signal_data_plot1 if source_plot == self.Plot1 else self.signal_data_plot2
 
-        # Convert data to NumPy arrays for easier filtering
+        # Convert data to NumPy arrays 
         x_data = np.array([x for x, y in data])
         y_data = np.array([y for x, y in data])
 
@@ -746,6 +756,10 @@ class Ui_MainWindow(object):
         # Filter x and y data
         selected_x = x_data[mask]
         selected_y = y_data[mask]
+
+        if len(selected_x) == 0 or len(selected_y) == 0:
+            print("Warning: No data found in the range [{}, {}].".format(x_min, x_max))
+            return None
 
         return list(zip(selected_x, selected_y))
 
@@ -811,7 +825,6 @@ class Ui_MainWindow(object):
             # Reset region selection for the next region
             del self.region_start, self.region_end
 
-    
     def plot_selected_regions_on_plot3(self):
         # Clear the plot to start fresh
         self.Plot3.clear()
@@ -828,18 +841,7 @@ class Ui_MainWindow(object):
                 else:
                     self.plot_selected_region(self.segments[1])
 
-                # Calculate overlap region
-                segment1 = self.segments[0]
-                segment2 = self.segments[1]
-                x1_min, x1_max, _ = segment1
-                x2_min, x2_max, _ = segment2
-
-                overlap_start = max(x1_min, x2_min)
-                overlap_end = min(x1_max, x2_max)
-
-                # Perform interpolation if needed
-                self.perform_interpolation(overlap_start, overlap_end)
-
+                self.perform_interpolation()
 
     def plot_selected_region(self, segment):
         if segment is None:
@@ -863,26 +865,18 @@ class Ui_MainWindow(object):
         # Plot the selected region on Plot3
         self.Plot3.plot(selected_x, selected_y, pen='b')
 
-    def perform_interpolation(self, overlap_start=None, overlap_end=None):
+    def perform_interpolation(self):
 
         if hasattr(self, 'last_interpolation_curve') and self.last_interpolation_curve is not None:
             self.Plot3.removeItem(self.last_interpolation_curve)
 
         if len(self.segments) == 2:
-            segment1, segment2 = self.segments
-            x1_min, x1_max, plot = segment1  
-            x2_min, x2_max, _ = segment2
+                segment1, segment2 = self.segments
+                x1_min, x1_max, plot = segment1  
+                # x2_min, x2_max, _ = segment2
+                # Use the updated new_x2_min from the slider adjustments
+                x2_min = getattr(self, 'current_x2_min', segment2[0])
 
-            if overlap_start is not None and overlap_end is not None and overlap_start < overlap_end:
-                x_values_overlap = np.linspace(overlap_start, overlap_end, num=100)
-                y_values_segment1_overlap = self.get_interpolated_y_values(segment1, x_values_overlap)
-                y_values_segment2_overlap = self.get_interpolated_y_values(segment2, x_values_overlap)
-
-                y_values_avg = (y_values_segment1_overlap + y_values_segment2_overlap) / 2
-
-                self.last_interpolation_curve = self.Plot3.plot(x_values_overlap, y_values_avg, pen='r')
-
-            else:
                 x_values = [x1_max, x2_min]
 
                 # Flatten the data arrays for segment 1 and 2
