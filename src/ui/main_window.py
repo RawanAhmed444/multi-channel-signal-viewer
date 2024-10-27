@@ -583,13 +583,15 @@ class Ui_MainWindow(object):
 
     def link_plots(self):
         if self.is_linked:
-            # Unlink the plots
+
             self.Plot2.setXLink(None)
             self.Plot2.setYLink(None)
             self.Link.setText("Link Plots")  # Change button text to "Link Plots"
             self.is_linked = False  # Update the state
         else:
             # Link the plots and set the same zoom
+            self.plot_index_plot1 = 0
+            self.plot_index_plot2 = 0
             self.Plot2.setXLink(self.Plot1)
             self.Plot2.setYLink(self.Plot1)
             # Synchronize zoom levels
@@ -1059,16 +1061,33 @@ class Ui_MainWindow(object):
 
     # function responsible for speed
     def toggleSpeed(self, button, plot_id):
-       button.speeds = [1.0, 1.5, 2.0, 8.0, 0.25, 0.5] 
-       button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
-       new_speed = button.speeds[button.current_speed_index]
-       button.setText(f"{new_speed}x")
-       print(f"Speed set to: {new_speed}x")
-       if plot_id == 1:
-            self.timer1.setInterval(int(150 / new_speed))
-       else:
-            self.timer2.setInterval(int(150 / new_speed))
+        # Initialize speeds and current index if not already done
+        if not hasattr(button, "speeds"):
+            button.speeds = [1.0, 1.5, 2.0, 8.0, 0.25, 0.5]
+            button.current_speed_index = 0
 
+        # Update the speed index and set new speed
+        button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
+        new_speed = button.speeds[button.current_speed_index]
+        button.setText(f"{new_speed}x")
+        print(f"Speed set to: {new_speed}x")
+
+        # Adjust timer intervals based on the is_linked flag
+        interval = int(150 / new_speed)
+        if self.is_linked:
+            # If linked, apply the interval to both timers
+            self.timer1.setInterval(interval)
+            self.timer2.setInterval(interval)
+            self.Speed1.current_speed_index = button.current_speed_index
+            self.Speed2.current_speed_index = button.current_speed_index
+            self.Speed1.setText(f"{new_speed}x")
+            self.Speed2.setText(f"{new_speed}x")
+        else:
+            # Adjust only the specified timer
+            if plot_id == 1:
+                self.timer1.setInterval(interval)
+            else:
+                self.timer2.setInterval(interval)
     def update_plot(self, signal_data, curves, plot_id):
         if plot_id == 1:
             plot_index = self.plot_index_plot1
