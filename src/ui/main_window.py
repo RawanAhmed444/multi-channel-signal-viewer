@@ -297,7 +297,6 @@ class Ui_MainWindow(object):
     def init_real_time_plot(self):
         # Initiate graph 3 for real-time signal
         self.Plot3 = pg.plot()
-        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  
         self.Plot3.setObjectName("Plot3")
         # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  
         # Set axis labels
