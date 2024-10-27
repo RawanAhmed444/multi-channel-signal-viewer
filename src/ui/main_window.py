@@ -232,7 +232,7 @@ class Ui_MainWindow(object):
          # Initialize the non rectangle signal file and its axis
         non_rectangle_signal = "src\\data\\signals\\radar.csv"
         self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 1, 2)
-        
+
         # Initialize list to append real-time data
         self.data = []
         
@@ -1029,12 +1029,29 @@ class Ui_MainWindow(object):
 
     # Function responsible for play/pause
     def toggle_play_stop(self, plot_id):
-        if self.play_stop_signals.is_playing(plot_id):
-            self.play_stop_signals.stop_signal(plot_id)
-            self.control_plot(plot_id, start=False)
+        # Check if the plots are linked
+        if self.is_linked:
+            # Toggle play/stop for both plots
+            if self.play_stop_signals.is_playing(1):
+                # Stop both plots if they're both playing
+                self.play_stop_signals.stop_signal(1)
+                self.play_stop_signals.stop_signal(2)
+                self.control_plot(1, start=False)
+                self.control_plot(2, start=False)
+            else:
+                # Start both plots if they're not both playing
+                self.play_stop_signals.start_signal(1)
+                self.play_stop_signals.start_signal(2)
+                self.control_plot(1, start=True)
+                self.control_plot(2, start=True)
         else:
-            self.play_stop_signals.start_signal(plot_id)
-            self.control_plot(plot_id, start=True)
+            # Toggle play/stop for the specified plot only
+            if self.play_stop_signals.is_playing(plot_id):
+                self.play_stop_signals.stop_signal(plot_id)
+                self.control_plot(plot_id, start=False)
+            else:
+                self.play_stop_signals.start_signal(plot_id)
+                self.control_plot(plot_id, start=True)
 
     # Control function for starting/stopping the timer for each plot
     def control_plot(self, plot_id, start):
