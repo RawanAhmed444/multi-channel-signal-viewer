@@ -247,6 +247,8 @@ class Ui_MainWindow(object):
 
         self.x1, self.y1 = [], []
         self.x2, self.y2 = [], []
+        self.original_segment2_position = None
+        self.original_segment2_data = []
 
         self.parent = parent
         self.segments = []  # Store selected segments for interpolation
@@ -488,7 +490,7 @@ class Ui_MainWindow(object):
             }
         """)
         self.slider.setMinimum(0)
-        self.slider.setMaximum(100)
+        self.slider.setMaximum(8)
         self.slider.setValue(0)
         self.slider.valueChanged.connect(self.update_distance)
 
@@ -711,8 +713,8 @@ class Ui_MainWindow(object):
                     print("Error: No data found for segment 2.")
                     return
 
-            # Calculate the minimum allowed distance to avoid overlap
-            min_distance = x1_max - x1_min + 1 
+            # Calculate the minimum allowed distance 
+            min_distance = x1_max - x1_min + 1
 
             # Calculate shift amount
             shift_amount = (x2_min - x1_max - min_distance) * (1 - value / 100.0)
@@ -738,6 +740,7 @@ class Ui_MainWindow(object):
             # Re-plot the segments and adjust the x-axis range
             self.plot_selected_regions_on_plot3()
             self.Plot3.setXRange(x1_min, new_x2_max)
+            self.perform_interpolation()
 
     def get_data_for_segment(self, segment):
         x_min, x_max, source_plot = segment
@@ -875,6 +878,7 @@ class Ui_MainWindow(object):
                 # x2_min, x2_max, _ = segment2
                 # Use the updated new_x2_min from the slider adjustments
                 x2_min = getattr(self, 'current_x2_min', segment2[0])
+                print(f"Performing interpolation between x1_max: {x1_max} and new_x2_min: {x2_min}")
 
                 x_values = [x1_max, x2_min]
 
@@ -904,16 +908,12 @@ class Ui_MainWindow(object):
 
                 self.last_interpolation_curve = self.Plot3.plot(x_interp, y_interp, pen='r')
 
-
     def get_y_value_for_x(self, x_data, y_data, x_value):
         if len(x_data) == 0:
             return None  
         return np.interp(x_value, x_data, y_data)
 
-
-    
     def swap_signals_between_plots(self, clicked_plot):
-
         # Identify source and target plots based on the clicked plot
         if clicked_plot == self.Plot1:
             source_plot = self.Plot1
