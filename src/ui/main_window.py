@@ -232,7 +232,7 @@ class Ui_MainWindow(object):
          # Initialize the non rectangle signal file and its axis
         non_rectangle_signal = "src\\data\\signals\\radar.csv"
         self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 1, 2)
-        
+
         # Initialize list to append real-time data
         self.data = []
         
@@ -586,13 +586,15 @@ class Ui_MainWindow(object):
 
     def link_plots(self):
         if self.is_linked:
-            # Unlink the plots
+
             self.Plot2.setXLink(None)
             self.Plot2.setYLink(None)
             self.Link.setText("Link Plots")  # Change button text to "Link Plots"
             self.is_linked = False  # Update the state
         else:
             # Link the plots and set the same zoom
+            self.plot_index_plot1 = 0
+            self.plot_index_plot2 = 0
             self.Plot2.setXLink(self.Plot1)
             self.Plot2.setYLink(self.Plot1)
             # Synchronize zoom levels
@@ -1027,12 +1029,29 @@ class Ui_MainWindow(object):
 
     # Function responsible for play/pause
     def toggle_play_stop(self, plot_id):
-        if self.play_stop_signals.is_playing(plot_id):
-            self.play_stop_signals.stop_signal(plot_id)
-            self.control_plot(plot_id, start=False)
+        # Check if the plots are linked
+        if self.is_linked:
+            # Toggle play/stop for both plots
+            if self.play_stop_signals.is_playing(1):
+                # Stop both plots if they're both playing
+                self.play_stop_signals.stop_signal(1)
+                self.play_stop_signals.stop_signal(2)
+                self.control_plot(1, start=False)
+                self.control_plot(2, start=False)
+            else:
+                # Start both plots if they're not both playing
+                self.play_stop_signals.start_signal(1)
+                self.play_stop_signals.start_signal(2)
+                self.control_plot(1, start=True)
+                self.control_plot(2, start=True)
         else:
-            self.play_stop_signals.start_signal(plot_id)
-            self.control_plot(plot_id, start=True)
+            # Toggle play/stop for the specified plot only
+            if self.play_stop_signals.is_playing(plot_id):
+                self.play_stop_signals.stop_signal(plot_id)
+                self.control_plot(plot_id, start=False)
+            else:
+                self.play_stop_signals.start_signal(plot_id)
+                self.control_plot(plot_id, start=True)
 
     # Control function for starting/stopping the timer for each plot
     def control_plot(self, plot_id, start):
@@ -1053,16 +1072,33 @@ class Ui_MainWindow(object):
 
     # function responsible for speed
     def toggleSpeed(self, button, plot_id):
-       button.speeds = [1.0, 1.5, 2.0, 8.0, 0.25, 0.5] 
-       button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
-       new_speed = button.speeds[button.current_speed_index]
-       button.setText(f"{new_speed}x")
-       print(f"Speed set to: {new_speed}x")
-       if plot_id == 1:
-            self.timer1.setInterval(int(150 / new_speed))
-       else:
-            self.timer2.setInterval(int(150 / new_speed))
+        # Initialize speeds and current index if not already done
+        if not hasattr(button, "speeds"):
+            button.speeds = [1.0, 1.5, 2.0, 8.0, 0.25, 0.5]
+            button.current_speed_index = 0
 
+        # Update the speed index and set new speed
+        button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
+        new_speed = button.speeds[button.current_speed_index]
+        button.setText(f"{new_speed}x")
+        print(f"Speed set to: {new_speed}x")
+
+        # Adjust timer intervals based on the is_linked flag
+        interval = int(150 / new_speed)
+        if self.is_linked:
+            # If linked, apply the interval to both timers
+            self.timer1.setInterval(interval)
+            self.timer2.setInterval(interval)
+            self.Speed1.current_speed_index = button.current_speed_index
+            self.Speed2.current_speed_index = button.current_speed_index
+            self.Speed1.setText(f"{new_speed}x")
+            self.Speed2.setText(f"{new_speed}x")
+        else:
+            # Adjust only the specified timer
+            if plot_id == 1:
+                self.timer1.setInterval(interval)
+            else:
+                self.timer2.setInterval(interval)
     def update_plot(self, signal_data, curves, plot_id):
         if plot_id == 1:
             plot_index = self.plot_index_plot1
