@@ -230,9 +230,9 @@ class Ui_MainWindow(object):
         self.time_size = 200
         
          # Initialize the non rectangle signal file and its axis
-        non_rectangle_signal = "src\\data\\signals\\ECG_Normal.csv"
-        self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 0, 1)
-        
+        non_rectangle_signal = "src\\data\\signals\\radar.csv"
+        self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 1, 2)
+
         # Initialize list to append real-time data
         self.data = []
         
@@ -247,6 +247,8 @@ class Ui_MainWindow(object):
 
         self.x1, self.y1 = [], []
         self.x2, self.y2 = [], []
+        self.original_segment2_position = None
+        self.original_segment2_data = []
 
         self.parent = parent
         self.segments = []  # Store selected segments for interpolation
@@ -490,7 +492,7 @@ class Ui_MainWindow(object):
             }
         """)
         self.slider.setMinimum(0)
-        self.slider.setMaximum(100)
+        self.slider.setMaximum(8)
         self.slider.setValue(0)
         self.slider.valueChanged.connect(self.update_distance)
 
@@ -586,13 +588,15 @@ class Ui_MainWindow(object):
 
     def link_plots(self):
         if self.is_linked:
-            # Unlink the plots
+
             self.Plot2.setXLink(None)
             self.Plot2.setYLink(None)
             self.Link.setText("Link Plots")  # Change button text to "Link Plots"
             self.is_linked = False  # Update the state
         else:
             # Link the plots and set the same zoom
+            self.plot_index_plot1 = 0
+            self.plot_index_plot2 = 0
             self.Plot2.setXLink(self.Plot1)
             self.Plot2.setYLink(self.Plot1)
             # Synchronize zoom levels
@@ -713,8 +717,8 @@ class Ui_MainWindow(object):
                     print("Error: No data found for segment 2.")
                     return
 
-            # Calculate the minimum allowed distance to avoid overlap
-            min_distance = x1_max - x1_min + 1 
+            # Calculate the minimum allowed distance 
+            min_distance = x1_max - x1_min + 1
 
             # Calculate shift amount
             shift_amount = (x2_min - x1_max - min_distance) * (1 - value / 100.0)
@@ -740,6 +744,7 @@ class Ui_MainWindow(object):
             # Re-plot the segments and adjust the x-axis range
             self.plot_selected_regions_on_plot3()
             self.Plot3.setXRange(x1_min, new_x2_max)
+            self.perform_interpolation()
 
     def get_data_for_segment(self, segment):
         x_min, x_max, source_plot = segment
@@ -877,6 +882,7 @@ class Ui_MainWindow(object):
                 # x2_min, x2_max, _ = segment2
                 # Use the updated new_x2_min from the slider adjustments
                 x2_min = getattr(self, 'current_x2_min', segment2[0])
+                print(f"Performing interpolation between x1_max: {x1_max} and new_x2_min: {x2_min}")
 
                 x_values = [x1_max, x2_min]
 
@@ -906,16 +912,12 @@ class Ui_MainWindow(object):
 
                 self.last_interpolation_curve = self.Plot3.plot(x_interp, y_interp, pen='r')
 
-
     def get_y_value_for_x(self, x_data, y_data, x_value):
         if len(x_data) == 0:
             return None  
         return np.interp(x_value, x_data, y_data)
 
-
-    
     def swap_signals_between_plots(self, clicked_plot):
-
         # Identify source and target plots based on the clicked plot
         if clicked_plot == self.Plot1:
             source_plot = self.Plot1
@@ -1029,12 +1031,29 @@ class Ui_MainWindow(object):
 
     # Function responsible for play/pause
     def toggle_play_stop(self, plot_id):
-        if self.play_stop_signals.is_playing(plot_id):
-            self.play_stop_signals.stop_signal(plot_id)
-            self.control_plot(plot_id, start=False)
+        # Check if the plots are linked
+        if self.is_linked:
+            # Toggle play/stop for both plots
+            if self.play_stop_signals.is_playing(1):
+                # Stop both plots if they're both playing
+                self.play_stop_signals.stop_signal(1)
+                self.play_stop_signals.stop_signal(2)
+                self.control_plot(1, start=False)
+                self.control_plot(2, start=False)
+            else:
+                # Start both plots if they're not both playing
+                self.play_stop_signals.start_signal(1)
+                self.play_stop_signals.start_signal(2)
+                self.control_plot(1, start=True)
+                self.control_plot(2, start=True)
         else:
-            self.play_stop_signals.start_signal(plot_id)
-            self.control_plot(plot_id, start=True)
+            # Toggle play/stop for the specified plot only
+            if self.play_stop_signals.is_playing(plot_id):
+                self.play_stop_signals.stop_signal(plot_id)
+                self.control_plot(plot_id, start=False)
+            else:
+                self.play_stop_signals.start_signal(plot_id)
+                self.control_plot(plot_id, start=True)
 
     # Control function for starting/stopping the timer for each plot
     def control_plot(self, plot_id, start):
@@ -1055,16 +1074,33 @@ class Ui_MainWindow(object):
 
     # function responsible for speed
     def toggleSpeed(self, button, plot_id):
-       button.speeds = [1.0, 1.5, 2.0, 8.0, 0.25, 0.5] 
-       button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
-       new_speed = button.speeds[button.current_speed_index]
-       button.setText(f"{new_speed}x")
-       print(f"Speed set to: {new_speed}x")
-       if plot_id == 1:
-            self.timer1.setInterval(int(150 / new_speed))
-       else:
-            self.timer2.setInterval(int(150 / new_speed))
+        # Initialize speeds and current index if not already done
+        if not hasattr(button, "speeds"):
+            button.speeds = [1.0, 1.5, 2.0, 8.0, 0.25, 0.5]
+            button.current_speed_index = 0
 
+        # Update the speed index and set new speed
+        button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
+        new_speed = button.speeds[button.current_speed_index]
+        button.setText(f"{new_speed}x")
+        print(f"Speed set to: {new_speed}x")
+
+        # Adjust timer intervals based on the is_linked flag
+        interval = int(150 / new_speed)
+        if self.is_linked:
+            # If linked, apply the interval to both timers
+            self.timer1.setInterval(interval)
+            self.timer2.setInterval(interval)
+            self.Speed1.current_speed_index = button.current_speed_index
+            self.Speed2.current_speed_index = button.current_speed_index
+            self.Speed1.setText(f"{new_speed}x")
+            self.Speed2.setText(f"{new_speed}x")
+        else:
+            # Adjust only the specified timer
+            if plot_id == 1:
+                self.timer1.setInterval(interval)
+            else:
+                self.timer2.setInterval(interval)
     def update_plot(self, signal_data, curves, plot_id):
         if plot_id == 1:
             plot_index = self.plot_index_plot1
