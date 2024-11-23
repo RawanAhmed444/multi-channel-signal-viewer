@@ -228,9 +228,9 @@ class Ui_MainWindow(object):
         self.time_size = 200
         
          # Initialize the non rectangle signal file and its axis
-        non_rectangle_signal = "src\\data\\signals\\radar.csv"
-        self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 1, 2)
-        
+        non_rectangle_signal = "src\\data\\signals\\ECG_Normal.csv"
+        self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 0, 1)
+
         # Initialize list to append real-time data
         self.data = []
         
@@ -245,11 +245,15 @@ class Ui_MainWindow(object):
 
         self.x1, self.y1 = [], []
         self.x2, self.y2 = [], []
+        self.original_segment2_position = None
+        self.original_segment2_data = []
 
         self.parent = parent
         self.segments = []  # Store selected segments for interpolation
         self.last_interpolation_curve = None
         self.selected_signal_data = None
+        self.original_segment2_data = None  # Store original x-data for segment 2
+
 
         self.timer1 = QtCore.QTimer()
         self.timer1.setInterval(150) 
@@ -277,21 +281,6 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
-    # def show_real_time_popup(self):
-    #     msg_box = NewWindow(self.parent)
-    #     msg_box.setTitle("Real-Time")
-    #     msg_box.setText("Real-time data visualization is not yet implemented.")
-    #     msg_box.setFixedSize(1200, 400)  # Set the size of the popup
-    #     msg_box.exec_()
-
-    # def show_non_rectangular_popup(self):
-    #     msg_box = NewWindow(self.parent)
-    #     msg_box.setTitle("Non-Rectangular")
-    #     msg_box.setText("Non-rectangular data visualization is not yet implemented.")
-    #     msg_box.setFixedSize(600, 400)  # Set the size of the popup
-    #     msg_box.init_non_rectangular_plot(self)
-    #     msg_box.exec_()
-    
     def init_real_time_plot(self):
         # Initiate graph 3 for real-time signal
         self.Plot3 = pg.plot()
@@ -325,6 +314,10 @@ class Ui_MainWindow(object):
 
         # Update the curve with all data points
         self.curve.setData(x=[d[0] for d in self.data], y=[d[1] for d in self.data])
+        
+        # # Set axis limits for the graph
+        # self.curve.setXRange(-max(timestamp), max(timestamp))  
+        # self.curve.setYRange(-max(price), max(price))
 
         # Limit the number of data points for performance
         if len(self.data) > 100:
@@ -332,20 +325,21 @@ class Ui_MainWindow(object):
         
     def init_non_rectangular_plot(self):
         self.Plot4 = pg.plot()
+        # Lock the aspect to maintain the circular shape
         self.Plot4.setAspectLocked()
 
         # Add polar grid lines
         self.Plot4.addLine(x=0, pen=0.2)
         self.Plot4.addLine(y=0, pen=0.2)
-        for r in range(2, 20, 2):
-            circle = QGraphicsEllipseItem(-r, -r, r * 2, r * 2)
+        for r in range(1, 2, 1):
+            circle = QGraphicsEllipseItem(-r/2, -r/2, (r*2)/2, (r*2)/2)
             circle.setPen(pg.mkPen(0.2))
             self.Plot4.addItem(circle)
         self.Plot4.setLabel('bottom', "Theta")
         self.Plot4.setLabel('left', "Radial Distance")
         
         self.plot_non_rectangular_data()
-        
+            
     def plot_non_rectangular_data(self):
         self.Plot4.enableAutoRange()  
         self.Plot4.showGrid(x=True, y=True)
@@ -356,7 +350,7 @@ class Ui_MainWindow(object):
         self.timer.setInterval(100)  
         self.timer.timeout.connect(self.update_non_rectangle_plot)
         self.timer.start()
-    
+
     def update_non_rectangle_plot(self):
         # Update the plot with new data points for non-rectangle signal
         if self.plot_index < len(self.x4):
@@ -367,11 +361,23 @@ class Ui_MainWindow(object):
             end_index = self.plot_index
             
             # Calculate theta (angle) and radial distance (r)
-            theta = np.arctan2(self.y4[start_index:end_index], self.x4[start_index:end_index])
-            r = np.sqrt(self.x4[start_index:end_index]**2 + self.y4[start_index:end_index]**2)
+            theta = self.x4[start_index:end_index]
+            r = self.y4[start_index:end_index]
 
+            # Offset the radial distance slightly
+            offset_factor = 1.7 
+            r_offset = r * offset_factor
+
+            # Convert polar coordinates to Cartesian coordinates for PyQTGraph
+            x = r_offset * np.cos(theta)
+            y = r_offset * np.sin(theta)
+
+            # Set axis limits for the graph
+            self.Plot4.setXRange(-2, 2)  
+            self.Plot4.setYRange(-1, 1)  
+            
             # Update the plot with polar coordinates
-            self.Plot4.plot(theta, r, pen='y', clear=False)
+            self.Plot4.plot(x, y, pen='y', clear=False)
             
             # Adjust the pause time for animation speed
             plt.pause(0.01)
@@ -580,13 +586,15 @@ class Ui_MainWindow(object):
 
     def link_plots(self):
         if self.is_linked:
-            # Unlink the plots
+
             self.Plot2.setXLink(None)
             self.Plot2.setYLink(None)
             self.Link.setText("Link Plots")  # Change button text to "Link Plots"
             self.is_linked = False  # Update the state
         else:
             # Link the plots and set the same zoom
+            self.plot_index_plot1 = 0
+            self.plot_index_plot2 = 0
             self.Plot2.setXLink(self.Plot1)
             self.Plot2.setYLink(self.Plot1)
             # Synchronize zoom levels
@@ -795,7 +803,6 @@ class Ui_MainWindow(object):
             self.Plot3.plot(x_overlap, y_avg, pen='r')
 
     def get_data_for_segment(self, segment):
-
         x_min, x_max, source_plot = segment
 
         # Retrieve the appropriate data based on the source plot
@@ -811,6 +818,10 @@ class Ui_MainWindow(object):
         # Filter x and y data
         selected_x = x_data[mask]
         selected_y = y_data[mask]
+
+        if len(selected_x) == 0 or len(selected_y) == 0:
+            print("Warning: No data found in the range [{}, {}].".format(x_min, x_max))
+            return None
 
         return list(zip(selected_x, selected_y))
 
@@ -1072,12 +1083,29 @@ class Ui_MainWindow(object):
 
     # Function responsible for play/pause
     def toggle_play_stop(self, plot_id):
-        if self.play_stop_signals.is_playing(plot_id):
-            self.play_stop_signals.stop_signal(plot_id)
-            self.control_plot(plot_id, start=False)
+        # Check if the plots are linked
+        if self.is_linked:
+            # Toggle play/stop for both plots
+            if self.play_stop_signals.is_playing(1):
+                # Stop both plots if they're both playing
+                self.play_stop_signals.stop_signal(1)
+                self.play_stop_signals.stop_signal(2)
+                self.control_plot(1, start=False)
+                self.control_plot(2, start=False)
+            else:
+                # Start both plots if they're not both playing
+                self.play_stop_signals.start_signal(1)
+                self.play_stop_signals.start_signal(2)
+                self.control_plot(1, start=True)
+                self.control_plot(2, start=True)
         else:
-            self.play_stop_signals.start_signal(plot_id)
-            self.control_plot(plot_id, start=True)
+            # Toggle play/stop for the specified plot only
+            if self.play_stop_signals.is_playing(plot_id):
+                self.play_stop_signals.stop_signal(plot_id)
+                self.control_plot(plot_id, start=False)
+            else:
+                self.play_stop_signals.start_signal(plot_id)
+                self.control_plot(plot_id, start=True)
 
     # Control function for starting/stopping the timer for each plot
     def control_plot(self, plot_id, start):
@@ -1098,16 +1126,33 @@ class Ui_MainWindow(object):
 
     # function responsible for speed
     def toggleSpeed(self, button, plot_id):
-       button.speeds = [1.0, 1.5, 2.0, 8.0, 0.25, 0.5] 
-       button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
-       new_speed = button.speeds[button.current_speed_index]
-       button.setText(f"{new_speed}x")
-       print(f"Speed set to: {new_speed}x")
-       if plot_id == 1:
-            self.timer1.setInterval(int(150 / new_speed))
-       else:
-            self.timer2.setInterval(int(150 / new_speed))
+        # Initialize speeds and current index if not already done
+        if not hasattr(button, "speeds"):
+            button.speeds = [1.0, 1.5, 2.0, 8.0, 0.25, 0.5]
+            button.current_speed_index = 0
 
+        # Update the speed index and set new speed
+        button.current_speed_index = (button.current_speed_index + 1) % len(button.speeds)
+        new_speed = button.speeds[button.current_speed_index]
+        button.setText(f"{new_speed}x")
+        print(f"Speed set to: {new_speed}x")
+
+        # Adjust timer intervals based on the is_linked flag
+        interval = int(150 / new_speed)
+        if self.is_linked:
+            # If linked, apply the interval to both timers
+            self.timer1.setInterval(interval)
+            self.timer2.setInterval(interval)
+            self.Speed1.current_speed_index = button.current_speed_index
+            self.Speed2.current_speed_index = button.current_speed_index
+            self.Speed1.setText(f"{new_speed}x")
+            self.Speed2.setText(f"{new_speed}x")
+        else:
+            # Adjust only the specified timer
+            if plot_id == 1:
+                self.timer1.setInterval(interval)
+            else:
+                self.timer2.setInterval(interval)
     def update_plot(self, signal_data, curves, plot_id):
         if plot_id == 1:
             plot_index = self.plot_index_plot1
