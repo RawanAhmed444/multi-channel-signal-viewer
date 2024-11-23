@@ -340,7 +340,7 @@ class Ui_MainWindow(object):
         self.Plot4.setLabel('left', "Radial Distance")
         
         self.plot_non_rectangular_data()
-        
+            
     def plot_non_rectangular_data(self):
         self.Plot4.enableAutoRange()  
         self.Plot4.showGrid(x=True, y=True)
@@ -351,7 +351,7 @@ class Ui_MainWindow(object):
         self.timer.setInterval(100)  
         self.timer.timeout.connect(self.update_non_rectangle_plot)
         self.timer.start()
-    
+
     def update_non_rectangle_plot(self):
         # Update the plot with new data points for non-rectangle signal
         if self.plot_index < len(self.x4):
