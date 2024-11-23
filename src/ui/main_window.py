@@ -57,8 +57,6 @@ class NewWindow(QtWidgets.QMessageBox):
         label.setAlignment(QtCore.Qt.AlignCenter)
         self.layout().addWidget(label, 0, 0, 1, 2)  # Add the label to the layout
         
-
-
 class StatisticsPopup(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super(StatisticsPopup, self).__init__(parent)
@@ -297,7 +295,7 @@ class Ui_MainWindow(object):
     def init_real_time_plot(self):
         # Initiate graph 3 for real-time signal
         self.Plot3 = pg.plot()
-        self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  
+        # self.Plot3.setGeometry(QtCore.QRect(800, 70, 541, 201))  
         self.Plot3.setObjectName("Plot3")
         # self.Plot1.scene().sigMouseClicked.connect(self.plotRightClicked)  
         # Set axis labels
@@ -379,8 +377,6 @@ class Ui_MainWindow(object):
             plt.pause(0.01)
         
     def initButtons(self):
-
-
         self.RealTimeButton = self.createButton("Real-Time", 800, 10, size=(150, 50), font_size=20)
         self.NonRectangularButton = self.createButton("Non-Rectangular", 1000, 10, size=(200, 50), font_size=20)
 
@@ -487,8 +483,8 @@ class Ui_MainWindow(object):
             }
         """)
         self.slider.setMinimum(0)
-        self.slider.setMaximum(100)
-        self.slider.setValue(0)
+        self.slider.setMaximum(150)
+        self.slider.setValue(50)
 
         self.slider.valueChanged.connect(self.update_distance)
 
@@ -695,39 +691,108 @@ class Ui_MainWindow(object):
             "}\n"
         )
 
-    def update_distance(self, value): 
+    def update_distance(self, value):
         if hasattr(self, 'segments') and len(self.segments) == 2:
             segment1 = self.segments[0]
             segment2 = self.segments[1]
-            
+
             x1_min, x1_max, _ = segment1
             x2_min, x2_max, _ = segment2
 
-            # Store original data for the second segment 
+            # Store original data for the second segment
             if not hasattr(self, 'original_segment2_data'):
-                self.original_segment2_data = self.get_data_for_segment(segment2)  # Get original data for segment 2
+                self.original_segment2_data = self.get_data_for_segment(segment2)
+                self.original_x2_min = x2_min
+                self.original_x2_max = x2_max
 
             # Calculate the distance adjustment
-            shift_amount = (x1_max - x2_min) * (1 - value / 100.0)
+            total_distance = x1_max - self.original_x2_min  # Full shift to align x2_min with x1_max
+            full_overlap_distance = x1_max - x1_min         # Distance for complete overlap
+            shift_amount = (total_distance + full_overlap_distance) * (value / 100.0)
 
-            # Update the x2_min and x2_max based on the shift amount
-            new_x2_min = x2_min + shift_amount
-            new_x2_max = x2_max + shift_amount
+            # Overlap logic: Ensure the segments continue overlapping
+            new_x2_min = self.original_x2_min + shift_amount
+            new_x2_max = self.original_x2_max + shift_amount
+
+            # Update the second segment's position
             self.segments[1] = (new_x2_min, new_x2_max, segment2[2])
 
-            # Store the shifted data for the second segment
+            # Update shifted data
             original_x_data, original_y_data = zip(*self.original_segment2_data)
-            shifted_x_data = np.array(original_x_data) + shift_amount
+            shifted_x_data = np.array(original_x_data) + (new_x2_min - self.original_x2_min)
             self.shifted_segment_data = list(zip(shifted_x_data, original_y_data))
 
-            # Re-plot the segments and adjust the x-axis range
-            self.plot_selected_regions_on_plot3()
-            self.adjust_plot3_x_range(x1_min, max(new_x2_max, x1_max))
+            # Calculate overlap range
+            overlap_start = max(x1_min, new_x2_min)
+            overlap_end = min(x1_max, new_x2_max)
 
+            # Call appropriate drawing methods
+            if new_x2_min <= x1_min and new_x2_max >= x1_max:
+                # Full overlap scenario
+                self.draw_full_overlap(segment1, self.shifted_segment_data)
+            elif overlap_start < overlap_end:
+                # Partial overlap scenario
+                self.draw_overlap_and_segments(segment1, self.shifted_segment_data, overlap_start, overlap_end)
+            else:
+                # No overlap scenario
+                self.plot_selected_regions_on_plot3()
+                self.perform_interpolation()
 
+            # Adjust the plot's x-axis range
+            self.adjust_plot3_x_range(min(x1_min, new_x2_min), max(x1_max, new_x2_max))
+            
     def adjust_plot3_x_range(self, x_min, x_max):
-        self.Plot3.setXRange(x_min, x_max)
+        self.Plot3.setXRange(x_min, x_max, padding=0.1)
 
+    def draw_full_overlap(self, segment1, segment2_data):
+        # Clear the plot
+        self.Plot3.clear()
+
+        # Plot the overlapping region in red
+        x1_min, x1_max, _ = segment1
+        segment1_data = self.get_data_for_segment(segment1)
+        overlap1 = [(x, y) for x, y in segment1_data if x1_min <= x <= x1_max]
+        overlap2 = [(x, y) for x, y in segment2_data if x1_min <= x <= x1_max]
+
+        if overlap1 and overlap2:
+            x_overlap, y_overlap1 = zip(*overlap1)
+            _, y_overlap2 = zip(*overlap2)
+
+            # Average the y-values for the overlapping region
+            y_avg = [(y1 + y2) / 2 for y1, y2 in zip(y_overlap1, y_overlap2)]
+
+            # Plot both segments up to their edges, ensuring no gaps
+            self.Plot3.plot(x_overlap, y_avg, pen='r')
+    
+    def draw_overlap_and_segments(self, segment1, segment2_data, overlap_start, overlap_end):
+        # Clear the plot
+        self.Plot3.clear()
+
+        # Plot non-overlapping parts of Segment 1 in blue
+        x1_min, x1_max, _ = segment1
+        segment1_data = self.get_data_for_segment(segment1)
+        non_overlap1 = [(x, y) for x, y in segment1_data if x < overlap_start or x > overlap_end]
+        if non_overlap1:
+            x1, y1 = zip(*non_overlap1)
+            self.Plot3.plot(x1, y1, pen='b')
+
+        # Plot non-overlapping parts of Segment 2 in blue
+        non_overlap2 = [(x, y) for x, y in segment2_data if x < overlap_start or x > overlap_end]
+        if non_overlap2:
+            x2, y2 = zip(*non_overlap2)
+            self.Plot3.plot(x2, y2, pen='b')
+
+        # Plot overlapping region in red
+        overlap1 = [(x, y) for x, y in segment1_data if overlap_start <= x <= overlap_end]
+        overlap2 = [(x, y) for x, y in segment2_data if overlap_start <= x <= overlap_end]
+
+        if overlap1 and overlap2:
+            x_overlap, y_overlap1 = zip(*overlap1)
+            _, y_overlap2 = zip(*overlap2)
+
+            # Average y-values for the overlapping region
+            y_avg = [(y1 + y2) / 2 for y1, y2 in zip(y_overlap1, y_overlap2)]
+            self.Plot3.plot(x_overlap, y_avg, pen='r')
 
     def get_data_for_segment(self, segment):
 
@@ -736,7 +801,7 @@ class Ui_MainWindow(object):
         # Retrieve the appropriate data based on the source plot
         data = self.signal_data_plot1 if source_plot == self.Plot1 else self.signal_data_plot2
 
-        # Convert data to NumPy arrays for easier filtering
+        # Convert data to NumPy arrays 
         x_data = np.array([x for x, y in data])
         y_data = np.array([y for x, y in data])
 
@@ -781,7 +846,6 @@ class Ui_MainWindow(object):
         )
             context_menu.exec_(QPoint(int(event.screenPos().x()), int(event.screenPos().y()))) #show the menu at the mouse position 
 
-    
     def select_region(self, plot, event):
         mouse_point = plot.getViewBox().mapSceneToView(event.scenePos())
         x_pos = mouse_point.x()
@@ -811,35 +875,25 @@ class Ui_MainWindow(object):
             # Reset region selection for the next region
             del self.region_start, self.region_end
 
-    
     def plot_selected_regions_on_plot3(self):
         # Clear the plot to start fresh
         self.Plot3.clear()
 
         if hasattr(self, 'segments'):
             # Plot the first segment
-            self.plot_selected_region(self.segments[0])
+            segment1 = self.segments[0]
+            self.plot_selected_region(segment1)
 
             # Plot the second segment 
             if len(self.segments) == 2:
+                segment2 = self.segments[1]
                 if hasattr(self, 'shifted_segment_data'):
                     shifted_x, shifted_y = zip(*self.shifted_segment_data)
                     self.Plot3.plot(shifted_x, shifted_y, pen='b')
                 else:
-                    self.plot_selected_region(self.segments[1])
-
-                # Calculate overlap region
-                segment1 = self.segments[0]
-                segment2 = self.segments[1]
-                x1_min, x1_max, _ = segment1
-                x2_min, x2_max, _ = segment2
-
-                overlap_start = max(x1_min, x2_min)
-                overlap_end = min(x1_max, x2_max)
-
-                # Perform interpolation if needed
-                self.perform_interpolation(overlap_start, overlap_end)
-
+                    self.plot_selected_region(segment2)
+                self.perform_interpolation()
+                
 
     def plot_selected_region(self, segment):
         if segment is None:
@@ -863,64 +917,48 @@ class Ui_MainWindow(object):
         # Plot the selected region on Plot3
         self.Plot3.plot(selected_x, selected_y, pen='b')
 
-    def perform_interpolation(self, overlap_start=None, overlap_end=None):
-
+    def perform_interpolation(self):
         if hasattr(self, 'last_interpolation_curve') and self.last_interpolation_curve is not None:
             self.Plot3.removeItem(self.last_interpolation_curve)
 
         if len(self.segments) == 2:
             segment1, segment2 = self.segments
-            x1_min, x1_max, plot = segment1  
+            x1_min, x1_max, _ = segment1
             x2_min, x2_max, _ = segment2
 
-            if overlap_start is not None and overlap_end is not None and overlap_start < overlap_end:
-                x_values_overlap = np.linspace(overlap_start, overlap_end, num=100)
-                y_values_segment1_overlap = self.get_interpolated_y_values(segment1, x_values_overlap)
-                y_values_segment2_overlap = self.get_interpolated_y_values(segment2, x_values_overlap)
+            # Ensure data comes from the correct source plot
+            segment1_data = self.get_data_for_segment(segment1)
+            segment2_data = self.get_data_for_segment(segment2)
 
-                y_values_avg = (y_values_segment1_overlap + y_values_segment2_overlap) / 2
+            if not segment1_data or not segment2_data:
+                return
 
-                self.last_interpolation_curve = self.Plot3.plot(x_values_overlap, y_values_avg, pen='r')
+            # Get the last point of segment1 and the first point of segment2
+            _, y1_end = segment1_data[-1]
+            _, y2_start = segment2_data[0]
 
-            else:
-                x_values = [x1_max, x2_min]
+            # Interpolation options
+            x_interp = np.linspace(x1_max, x2_min, num=200)
+            if self.radioLinear.isChecked():
+                y_interp = np.interp(x_interp, [x1_max, x2_min], [y1_end, y2_start])
+            elif self.radioQuadratic.isChecked():
+                coeffs = np.polyfit([x1_max, x2_min], [y1_end, y2_start], 2)
+                poly_func = np.poly1d(coeffs)
+                y_interp = poly_func(x_interp)
+            elif self.radioCubic.isChecked():
+                coeffs = np.polyfit([x1_max, x2_min], [y1_end, y2_start], 3)
+                poly_func = np.poly1d(coeffs)
+                y_interp = poly_func(x_interp)
 
-                # Flatten the data arrays for segment 1 and 2
-                x_data1 = np.array([x for x, y in (self.signal_data_plot1 if plot == self.Plot1 else self.signal_data_plot2)]).flatten()
-                y_data1 = np.array([y for x, y in (self.signal_data_plot1 if plot == self.Plot1 else self.signal_data_plot2)]).flatten()
-                x_data2 = np.array([x for x, y in (self.signal_data_plot1 if plot == self.Plot1 else self.signal_data_plot2)]).flatten()
-                y_data2 = np.array([y for x, y in (self.signal_data_plot1 if plot == self.Plot1 else self.signal_data_plot2)]).flatten()
-
-                # Get y-values at the end points using updated segment values
-                y1_end = self.get_y_value_for_x(x_data1, y_data1, x1_max)
-                y2_start = self.get_y_value_for_x(x_data2, y_data2, x2_min)
-
-                if self.radioLinear.isChecked():
-                    x_interp = np.linspace(x1_max, x2_min, num=150)
-                    y_interp = np.interp(x_interp, x_values, [y1_end, y2_start])
-                elif self.radioQuadratic.isChecked():
-                    coeffs = np.polyfit(x_values, [y1_end, y2_start], 2)
-                    poly_func = np.poly1d(coeffs)
-                    x_interp = np.linspace(x1_max, x2_min, num=150)
-                    y_interp = poly_func(x_interp)
-                elif self.radioCubic.isChecked():
-                    coeffs = np.polyfit(x_values, [y1_end, y2_start], 3)
-                    poly_func = np.poly1d(coeffs)
-                    x_interp = np.linspace(x1_max, x2_min, num=150)
-                    y_interp = poly_func(x_interp)
-
-                self.last_interpolation_curve = self.Plot3.plot(x_interp, y_interp, pen='r')
-
+            # Plot the interpolation curve, ensuring no gaps
+            self.last_interpolation_curve = self.Plot3.plot(x_interp, y_interp, pen='r')
 
     def get_y_value_for_x(self, x_data, y_data, x_value):
         if len(x_data) == 0:
             return None  
         return np.interp(x_value, x_data, y_data)
-
-
     
     def swap_signals_between_plots(self, clicked_plot):
-
         # Identify source and target plots based on the clicked plot
         if clicked_plot == self.Plot1:
             source_plot = self.Plot1
@@ -1115,162 +1153,3 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-
-
-# def plot_selected_regions_on_plot3(self):
-    #     # Clear the plot to start fresh
-    #     self.Plot3.clear()
-
-    #     if hasattr(self, 'segments'):
-    #         # Plot the first segment
-    #         self.plot_selected_region(self.segments[0])
-
-    #         # Check if we have two segments to plot
-    #         if len(self.segments) == 2:
-    #             segment1 = self.segments[0]
-    #             segment2 = self.segments[1]
-    #             x1_min, x1_max, _ = segment1
-    #             x2_min, x2_max, _ = segment2
-
-    #             # Handle the shifted second segment based on slider value
-    #             if hasattr(self, 'shifted_segment_data'):
-    #                 shifted_x, shifted_y = zip(*self.shifted_segment_data)
-    #                 self.Plot3.plot(shifted_x, shifted_y, pen='b')
-    #             else:
-    #                 # Plot the second segment normally if not shifted
-    #                 self.plot_selected_region(segment2)
-
-    #             # Calculate the overlap region for interpolation
-    #             overlap_start = max(x1_min, x2_min)
-    #             overlap_end = min(x1_max, x2_max)
-    #             print(f"overlap_start: {overlap_start}")
-    #             print(f"overlap_end: {overlap_end}")
-
-    #             # Perform interpolation if required
-    #             self.perform_interpolation(overlap_start, overlap_end)
-
-    
-    # def plot_selected_region(self, segment):
-    #     if segment is None:
-    #         return
-
-    #     # Unpack the segment tuple for min, max, and source plot
-    #     x_min, x_max, source_plot = segment
-
-    #     # Retrieve the appropriate data for the selected plot
-    #     if source_plot == self.Plot1:
-    #         data = self.signal_data_plot1  # Get data for Plot1
-    #     else:
-    #         data = self.signal_data_plot2  # Get data for Plot2
-
-    #     # Assuming data is a list of (x, y) tuples, convert to NumPy arrays for easier filtering
-    #     x_data = np.array([x for x, y in data])
-    #     y_data = np.array([y for x, y in data])
-
-    #     # Create a mask to select data within the range [x_min, x_max]
-    #     mask = (x_data >= x_min) & (x_data <= x_max)
-        
-    #     # Apply the mask to filter x and y data
-    #     selected_x = x_data[mask]
-    #     selected_y = y_data[mask]
-
-    #     # Plot the selected region on Plot3
-    #     self.Plot3.plot(selected_x, selected_y, pen='b')
-
-# def update_distance(self, value):
-    #     if hasattr(self, 'segments') and len(self.segments) == 2:
-    #         # Get the segments and their original positions
-    #         segment1 = self.segments[0]
-    #         segment2 = self.segments[1]
-    #         x1_min, x1_max, _ = segment1
-    #         x2_min, x2_max, _ = segment2
-
-    #         # Store original data for the second segment if not already done
-    #         if not hasattr(self, 'original_segment2_data'):
-    #             self.original_segment2_data = self.get_data_for_segment(segment2)  # Get original data for segment 2
-
-    #         # Calculate the distance adjustment based on the slider value (0 to 100)
-    #         # When value is 0, segments are at their original positions
-    #         # When value is 100, segments overlap completely (x1_max == x2_min)
-    #         shift_amount = (x1_max - x2_min) * (value / 100.0)  # Shifts towards overlap when value increases
-
-    #         # Update the x2_min and x2_max based on the shift amount
-    #         new_x2_min = x2_min + shift_amount
-    #         new_x2_max = x2_max + shift_amount
-    #         self.segments[1] = (new_x2_min, new_x2_max, segment2[2])  # Update the segment with new min/max
-
-    #         # Store the shifted data for the second segment to use during plotting
-    #         original_x_data, original_y_data = zip(*self.original_segment2_data)
-    #         shifted_x_data = np.array(original_x_data) + shift_amount
-    #         self.shifted_segment_data = list(zip(shifted_x_data, original_y_data))
-
-    #         # Re-plot the segments and update the x-axis range to fit them both
-    #         self.plot_selected_regions_on_plot3()
-
-    #         # Adjust the x-axis range of Plot3 to fit both segments
-    #         self.adjust_plot3_x_range(x1_min, new_x2_max)  # Ensure the range fits both segments
-
-
-    
-    # def adjust_plot3_x_range(self, x_min, x_max):
-    #     """Adjusts the x-axis range of Plot3."""
-    #     self.Plot3.setXRange(x_min, x_max)
-# def perform_interpolation(self, overlap_start=None, overlap_end=None):
-    #     # Remove the previous interpolation curve if it exists
-    #     if self.last_interpolation_curve is not None:
-    #         self.Plot3.removeItem(self.last_interpolation_curve)
-
-    #     # Ensure we have two segments selected for interpolation
-    #     if len(self.segments) == 2:
-    #         segment1, segment2 = self.segments
-    #         x1_min, x1_max, plot1 = segment1  
-    #         x2_min, x2_max, _ = segment2  # This will now have the updated x2_min
-
-    #         # Check if there's an overlap for averaging
-    #         if overlap_start is not None and overlap_end is not None and overlap_start < overlap_end:
-    #             x_values_overlap = np.linspace(overlap_start, overlap_end, num=100)
-    #             y_values_segment1_overlap = self.get_interpolated_y_values(segment1, x_values_overlap)
-    #             y_values_segment2_overlap = self.get_interpolated_y_values(segment2, x_values_overlap)
-
-    #             # Calculate the average y-values in the overlapping region
-    #             y_values_avg = (y_values_segment1_overlap + y_values_segment2_overlap) / 2
-
-    #             # Plot the averaged y-values in the overlap on Plot3
-    #             self.last_interpolation_curve = self.Plot3.plot(x_values_overlap, y_values_avg, pen='r')
-
-    #         else:
-    #             # Handle no overlap and interpolate between the segments
-    #             x_values = [x1_max, x2_min]  # Will use updated x2_min
-
-    #             # Extract x_data and y_data for plot1 and plot2
-    #             x_data1 = np.array([x for x, y in (self.signal_data_plot1 if plot1 == self.Plot1 else self.signal_data_plot2)]).flatten()
-    #             y_data1 = np.array([y for x, y in (self.signal_data_plot1 if plot1 == self.Plot1 else self.signal_data_plot2)]).flatten()
-    #             x_data2 = np.array([x for x, y in (self.signal_data_plot1 if plot2 == self.Plot1 else self.signal_data_plot2)]).flatten()
-    #             y_data2 = np.array([y for x, y in (self.signal_data_plot1 if plot2 == self.Plot1 else self.signal_data_plot2)]).flatten()
-
-    #             # Get y-values at the end points using updated segment values
-    #             y1_end = self.get_y_value_for_x(x_data1, y_data1, x_values[0])
-    #             y2_start = self.get_y_value_for_x(x_data2, y_data2, x_values[1])
-                        
-    #             # Perform interpolation (linear, quadratic, or cubic)
-    #             if self.radioLinear.isChecked():
-    #                 x_interp = np.linspace(x1_max, x2_min, num=150)
-    #                 y_interp = np.interp(x_interp, x_values, [y1_end, y2_start])
-    #             elif self.radioQuadratic.isChecked():
-    #                 coeffs = np.polyfit(x_values, [y1_end, y2_start], 2)
-    #                 poly_func = np.poly1d(coeffs)
-    #                 x_interp = np.linspace(x1_max, x2_min, num=150)
-    #                 y_interp = poly_func(x_interp)
-    #             elif self.radioCubic.isChecked():
-    #                 coeffs = np.polyfit(x_values, [y1_end, y2_start], 3)
-    #                 poly_func = np.poly1d(coeffs)
-    #                 x_interp = np.linspace(x1_max, x2_min, num=150)
-    #                 y_interp = poly_func(x_interp)
-
-    #             # Plot the interpolated values on Plot3
-    #             self.last_interpolation_curve = self.Plot3.plot(x_interp, y_interp, pen='r')
-    # # Ensure the get_y_value_for_x function is also defined properly:
-    # def get_y_value_for_x(self, x_data, y_data, x_value):
-    #     if len(x_data) == 0:
-    #         return None  
-    #     return np.interp(x_value, x_data, y_data)
