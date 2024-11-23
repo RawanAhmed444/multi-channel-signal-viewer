@@ -227,9 +227,9 @@ class Ui_MainWindow(object):
         self.plot_index = 0  
         self.time_size = 200
         
-         # Initialize the non rectangle signal file and its axis
+        # Initialize the non rectangle signal file and its axis
         non_rectangle_signal = "src\\data\\signals\\ECG_Normal.csv"
-        self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 0, 1)
+        # self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 0, 1)
 
         # Initialize list to append real-time data
         self.data = []
@@ -245,15 +245,14 @@ class Ui_MainWindow(object):
 
         self.x1, self.y1 = [], []
         self.x2, self.y2 = [], []
-        self.original_segment2_position = None
-        self.original_segment2_data = []
+        # self.original_segment2_position = None
+        # self.original_segment2_data = []
 
         self.parent = parent
         self.segments = []  # Store selected segments for interpolation
         self.last_interpolation_curve = None
         self.selected_signal_data = None
-        self.original_segment2_data = None  # Store original x-data for segment 2
-
+        # self.original_segment2_data = None  # Store original x-data for segment 2
 
         self.timer1 = QtCore.QTimer()
         self.timer1.setInterval(150) 
