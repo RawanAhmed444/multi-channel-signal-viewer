@@ -230,8 +230,8 @@ class Ui_MainWindow(object):
         self.time_size = 200
         
          # Initialize the non rectangle signal file and its axis
-        non_rectangle_signal = "src\\data\\signals\\radar.csv"
-        self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 1, 2)
+        non_rectangle_signal = "src\\data\\signals\\ECG_Normal.csv"
+        self.x4, self.y4= convert_signal_values_to_numeric(non_rectangle_signal, 0, 1)
 
         # Initialize list to append real-time data
         self.data = []
@@ -316,9 +316,9 @@ class Ui_MainWindow(object):
         # Update the curve with all data points
         self.curve.setData(x=[d[0] for d in self.data], y=[d[1] for d in self.data])
         
-        # Set axis limits for the graph
-        self.curve.setXRange(-max(timestamp), max(timestamp))  
-        self.curve.setYRange(-max(price), max(price))
+        # # Set axis limits for the graph
+        # self.curve.setXRange(-max(timestamp), max(timestamp))  
+        # self.curve.setYRange(-max(price), max(price))
 
         # Limit the number of data points for performance
         if len(self.data) > 100:
