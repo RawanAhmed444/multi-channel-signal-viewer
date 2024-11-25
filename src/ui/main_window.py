@@ -403,7 +403,10 @@ class Ui_MainWindow(object):
         self.ZoomIn1.clicked.connect(self.zoom_in_1)
         self.ZoomOut1.clicked.connect(self.zoom_out_1)
         self.Link.clicked.connect(self.link_plots)
-    
+
+        self.ClearPlot1 = self.createButton("Clear", 15, 130)
+        self.ClearPlot1.clicked.connect(lambda: self.clear_plot(1))
+
         
         self.Signal2 = self.createButton("Signal", 15, 530)   # Left Signal button with icon
         self.Play_stop2 = self.createToggleButton("src\data\Images\Pause.png", "src/data/Images/Play.png", 610, 900, )    # Left Toggle P/S button for second plot
@@ -415,6 +418,9 @@ class Ui_MainWindow(object):
         self.Signal2.clicked.connect(self.load_second_signal)
         self.ZoomIn2.clicked.connect(self.zoom_in_2)
         self.ZoomOut2.clicked.connect(self.zoom_out_2)
+
+        self.ClearPlot2 = self.createButton("Clear", 15, 590)
+        self.ClearPlot2.clicked.connect(lambda: self.clear_plot(2))
        
         # Right side buttons (renamed mirrored buttons)
         self.ZoomIn3 = self.createButtonWithIcon("src/data/Images/Zoom in.png", 1680, 670)  # Right Zoom In button
@@ -497,6 +503,26 @@ class Ui_MainWindow(object):
         self.radioQuadratic.toggled.connect(self.perform_interpolation)
         self.radioCubic.toggled.connect(self.perform_interpolation)
 
+    def clear_plot(self, plot_id):
+        if plot_id == 1:
+            self.Plot1.clear()
+            self.signal_data_plot1 = []
+            self.curves_plot1 = []
+            self.plot_index_plot1 = 0
+
+            self.timer1.stop()
+            self.timer1.start()
+            
+        elif plot_id == 2:
+            self.Plot2.clear()
+            self.signal_data_plot2 = []
+            self.curves_plot2 = []
+            self.plot_index_plot2 = 0
+            self.timer2.stop()
+            self.timer2.start()
+
+
+        print(f"Plot {plot_id} cleared.")
     def load_first_signal(self):
         # Check if maximum signals have already been loaded
         if len(self.signal_data_plot1) >= 5:
@@ -1068,17 +1094,23 @@ class Ui_MainWindow(object):
         return curve
 
     def plotData(self):
-        self.Plot1.enableAutoRange()
-        self.Plot1.showGrid(x=True, y=True)  
-        self.timer1.start()
-        
-        self.Plot2.enableAutoRange()  
-        self.Plot2.showGrid(x=True, y=True) 
-        self.timer2.start()
+        # Initialize or reset data arrays for plotting
+        self.signal_data_plot1 = [[[], []]]  # Dummy initial structure for signals
+        self.curves_plot1 = [self.Plot1.plot(pen='r')]  # Initialize a curve with a pen color
+        self.plot_index_plot1 = 0
 
-        # Initialize plot indices separately for each plot
-        self.plot_index1 = 0
-        self.plot_index2 = 0
+        self.signal_data_plot2 = [[[], []]]
+        self.curves_plot2 = [self.Plot2.plot(pen='b')]
+        self.plot_index_plot2 = 0
+
+        # Enable auto range and grid for both plots
+        self.Plot1.enableAutoRange()
+        self.Plot1.showGrid(x=True, y=True)
+        self.timer1.start()
+
+        self.Plot2.enableAutoRange()
+        self.Plot2.showGrid(x=True, y=True)
+        self.timer2.start()
 
     # Function responsible for play/pause
     def toggle_play_stop(self, plot_id):
